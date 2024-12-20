@@ -1,7 +1,7 @@
 import * as d3 from "d3";
 import { Context } from "../Context";
 import { GraphEventManager } from "./Basic/EventManager";
-import { createDefaultEdge, Graph } from "./Basic/Graph";
+import { Graph } from "./Basic/Graph";
 import { CanvasEventManager } from "./Renderer/EventManager";
 import { CanvasEventAnalyst } from "./Renderer/EventAnalyst";
 import { ForceSimulator } from "./Renderer/Simulator";
