@@ -1,6 +1,4 @@
 import * as d3 from "d3";
-import * as topojson from "topojson-client";
-import { FeatureCollection, Geometry } from "geojson";
 import { Context } from "./Context";
 import { NodeTable } from "./Data";
 import { Names } from "./Names";
