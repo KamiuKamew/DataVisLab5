@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>铁路网络运营分析系统</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        /* 全局样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f8fafc;
+            color: #1a202c;
+        }
+
+        .container {
+            display: grid;
+            grid-template-areas: 
+                "header header header"
+                "controls network analysis"
+                "timeline timeline timeline";
+            grid-template-columns: 1fr 3fr 1fr; /* 使用fr单位分配更多空间给network */
+            grid-template-rows: 60px 1fr 240px;
+            height: 100vh;
+            gap: 12px;
+            padding: 12px;
+        }
+
+        .header {
+            grid-area: header;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .controls {
+            grid-area: controls;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;
+        }
+
+        .network-view {
+            grid-area: network;
+            position: relative;
+            background-color: #f8fafc;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .analysis {
+            grid-area: analysis;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;
+        }
+
+        .timeline {
+            grid-area: timeline;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        .metric-card {
+            padding: 16px;
+            border-radius: 8px;
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+        }
+
+        .metric-card h3 {
+            font-size: 14px;
+            color: #4a5568;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .metric-subtext {
+            font-size: 12px;
+            color: #718096;
+            margin-top: 4px;
+        }
+
+        .analysis-section {
+            padding: 16px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .analysis-section h3 {
+            margin-bottom: 12px;
+            color: #2d3748;
+            font-size: 16px;
+        }
+
+        .node {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .node circle {
+            fill: #4a5568;
+            stroke: white;
+            stroke-width: 2px;
+        }
+
+        .node:hover circle {
+            fill: #ed8936;
+        }
+
+        .node.selected circle {
+            fill: #ed8936;
+            stroke: #c05621;
+            r: 8;
+        }
+
+        .node text {
+            font-size: 10px;
+            fill: #4a5568;
+            text-anchor: middle;
+            dy: -12px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .node:hover text {
+            opacity: 1;
+        }
+
+        .link {
+            stroke: #cbd5e0;
+            stroke-opacity: 0.6;
+            transition: all 0.2s;
+        }
+
+        .link:hover {
+            stroke: #4a5568;
+            stroke-opacity: 1;
+        }
+
+        .link.highlighted {
+            stroke: #ed8936;
+            stroke-opacity: 1;
+            stroke-width: 3;
+        }
+
+        .tooltip {
+            position: absolute;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            background: #4a5568;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            background: #2d3748;
+        }
+
+        .analysis-mode {
+            padding: 12px;
+            background: #f7fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .analysis-mode h3 {
+            margin-bottom: 12px;
+        }
+
+        .mode-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .mode-option:hover {
+            background: #edf2f7;
+        }
+
+        .mode-option.active {
+            background: #e6fffa;
+            color: #2c7a7b;
+        }
+
+        /* 报告容器样式 */
+        .report-container {  
+            padding: 20px;  
+            background: white;  
+            border-radius: 8px;  
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);  
+            overflow-y: auto;
+            max-height: 80vh;
+            width: 400px;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: none;
+            z-index: 1001;
+        }  
+
+        .metrics-grid {  
+            display: grid;  
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));  
+            gap: 16px;  
+            margin: 16px 0;  
+        }  
+
+        .metric-item {  
+            padding: 12px;  
+            background: #f8fafc;  
+            border-radius: 4px;  
+            display: flex;  
+            flex-direction: column;  
+        }  
+
+        .recommendation-item {  
+            margin: 12px 0;  
+            padding: 12px;  
+            border-left: 4px solid;  
+            background: #f8fafc;  
+        }  
+
+        .recommendation-item.high {  
+            border-color: #e53e3e;  
+        }  
+
+        .recommendation-item.medium {  
+            border-color: #dd6b20;  
+        }  
+
+        .recommendation-item.low {  
+            border-color: #38a169;  
+        }  
+    </style>
+</head>
+<body>
+    <div class="container" id="network-container">
+        <header class="header panel">
+            <div>
+                <h1>铁路网络运营分析系统</h1>
+                <span style="color: #718096; font-size: 14px;">实时分析铁路网络效率与运营状况</span>
+            </div>
+            <div style="display: flex; gap: 12px;">
+                <button class="btn" id="reset-view">重置视图</button>
+                <button class="btn" id="export-analysis">导出分析报告</button>
+                <button class="btn" id="generate-report">生成报告</button>
+            </div>
+        </header>
+
+        <div class="controls panel">
+            <div class="metric-card">
+                <h3>网络概况</h3>
+                <div class="metric-value" id="network-stats">--</div>
+                <div class="metric-subtext">包含节点数量和总里程</div>
+            </div>
+
+            <div class="analysis-mode">
+                <h3>分析维度</h3>
+                <div class="mode-option active" data-mode="capacity">
+                    <span>运力分析</span>
+                    <div class="metric-subtext">评估路网承载能力</div>
+                </div>
+                <div class="mode-option" data-mode="efficiency">
+                    <span>效率分析</span>
+                    <div class="metric-subtext">计算最优运行方案</div>
+                </div>
+                <div class="mode-option" data-mode="bottleneck">
+                    <span>瓶颈识别</span>
+                    <div class="metric-subtext">发现潜在拥堵点</div>
+                </div>
+                <div class="mode-option" data-mode="resilience">
+                    <span>韧性评估</span>
+                    <div class="metric-subtext">分析网络可靠性</div>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <h3>路径分析</h3>
+                <label for="path-type">路径类型</label>
+                <select id="path-type" style="width: 100%; margin-bottom: 8px; padding: 4px;">
+                    <option value="shortest">最短距离</option>
+                    <option value="fastest">最快时间</option>
+                    <option value="reliable">最可靠路径</option>
+                    <option value="balanced">平衡优化</option>
+                </select>
+                <div id="path-details"></div>
+            </div>
+        </div>
+
+        <div class="network-view panel">
+            <svg id="network-svg"></svg>
+        </div>
+
+        <div class="analysis panel">
+            <div class="analysis-section">
+                <h3>关键指标</h3>
+                <div id="key-metrics"></div>
+            </div>
+            <div class="analysis-section">
+                <h3>运营建议</h3>
+                <div id="recommendations"></div>
+            </div>
+        </div>
+
+        <div class="timeline panel">
+            <div id="temporal-analysis"></div>
+        </div>
+    </div>
+
+    <!-- 报告显示容器 -->
+    <div id="report-container" class="report-container">
+        <!-- 报告内容将动态插入这里 -->
+    </div>
+
+    <!-- 工具提示 -->
+    <div class="tooltip"></div>
+
+    <script>
+        // 事件总线系统  
+        class EventBus {  
+            constructor() {  
+                this.events = new Map();  
+            }  
+
+            on(eventName, callback) {  
+                if (!this.events.has(eventName)) {  
+                    this.events.set(eventName, new Set());  
+                }  
+                this.events.get(eventName).add(callback);  
+            }  
+
+            off(eventName, callback) {  
+                if (this.events.has(eventName)) {  
+                    this.events.get(eventName).delete(callback);  
+                }  
+            }  
+
+            emit(eventName, data) {  
+                if (this.events.has(eventName)) {  
+                    this.events.get(eventName).forEach(callback => {  
+                        try {  
+                            callback(data);  
+                        } catch (error) {  
+                            console.error(`Error in event ${eventName}:`, error);  
+                        }  
+                    });  
+                }  
+            }  
+        }  
+
+        // 数据管理器  
+        class DataManager {  
+            constructor() {  
+                this.nodes = new Map();  
+                this.links = new Map();  
+                this.observers = new Set();  
+            }  
+
+            // 添加或更新节点  
+            updateNode(nodeData) {  
+                const id = nodeData.id;  
+                const existingNode = this.nodes.get(id);  
+
+                const node = {  
+                    ...existingNode,  
+                    ...nodeData,  
+                    lastUpdate: Date.now()  
+                };  
+
+                this.nodes.set(id, node);  
+                this.notifyObservers('nodeUpdate', node);  
+            }  
+
+            // 添加或更新连接  
+            updateLink(linkData) {  
+                const id = `${linkData.source}-${linkData.target}`;  
+                const existingLink = this.links.get(id);  
+
+                const link = {  
+                    ...existingLink,  
+                    ...linkData,  
+                    id,  
+                    lastUpdate: Date.now()  
+                };  
+
+                this.links.set(id, link);  
+                this.notifyObservers('linkUpdate', link);  
+            }  
+
+            // 批量更新数据  
+            batchUpdate(data) {  
+                const updates = {  
+                    nodes: new Set(),  
+                    links: new Set()  
+                };  
+
+                // 更新节点  
+                if (data.nodes) {  
+                    data.nodes.forEach(nodeData => {  
+                        this.updateNode(nodeData);  
+                        updates.nodes.add(nodeData.id);  
+                    });  
+                }  
+
+                // 更新连接  
+                if (data.links) {  
+                    data.links.forEach(linkData => {  
+                        this.updateLink(linkData);  
+                        updates.links.add(`${linkData.source}-${linkData.target}`);  
+                    });  
+                }  
+
+                this.notifyObservers('batchUpdate', updates);  
+            }  
+
+            // 观察者模式实现  
+            addObserver(observer) {  
+                this.observers.add(observer);  
+            }  
+
+            removeObserver(observer) {  
+                this.observers.delete(observer);  
+            }  
+
+            notifyObservers(event, data) {  
+                this.observers.forEach(observer => {  
+                    if (observer.onDataUpdate) {  
+                        observer.onDataUpdate(event, data);  
+                    }  
+                });  
+            }  
+
+            // 获取数据快照  
+            getSnapshot() {  
+                return {  
+                    nodes: Array.from(this.nodes.values()),  
+                    links: Array.from(this.links.values()),  
+                    timestamp: Date.now()  
+                };  
+            }  
+        }  
+
+        // 网络指标计算器  
+        class NetworkMetrics {  
+            constructor(nodes, links) {  
+                this.nodes = nodes;  
+                this.links = links;  
+            }  
+
+            // 计算网络密度  
+            calculateDensity() {  
+                const n = this.nodes.length;  
+                if (n <= 1) return 0;
+                const maxEdges = n * (n - 1) / 2;  
+                return (this.links.length) / maxEdges;  
+            }  
+
+            // 计算平均路径长度  
+            calculateAveragePathLength() {  
+                let totalDistance = 0;  
+                let pathCount = 0;  
+
+                // Floyd-Warshall算法计算所有节点对之间的最短路径  
+                const distances = {};  
+                this.nodes.forEach(n1 => {  
+                    distances[n1.id] = {};  
+                    this.nodes.forEach(n2 => {  
+                        distances[n1.id][n2.id] = n1.id === n2.id ? 0 : Infinity;  
+                    });  
+                });  
+
+                this.links.forEach(link => {  
+                    distances[link.source.id][link.target.id] = link.distance;  
+                    distances[link.target.id][link.source.id] = link.distance;  
+                });  
+
+                this.nodes.forEach(k => {  
+                    this.nodes.forEach(i => {  
+                        this.nodes.forEach(j => {  
+                            if (distances[i.id][j.id] >   
+                                distances[i.id][k.id] + distances[k.id][j.id]) {  
+                                distances[i.id][j.id] =   
+                                    distances[i.id][k.id] + distances[k.id][j.id];  
+                            }  
+                        });  
+                    });  
+                });  
+
+                // 计算平均值  
+                this.nodes.forEach(n1 => {  
+                    this.nodes.forEach(n2 => {  
+                        if (n1.id !== n2.id && distances[n1.id][n2.id] !== Infinity) {  
+                            totalDistance += distances[n1.id][n2.id];  
+                            pathCount++;  
+                        }  
+                    });  
+                });  
+
+                return pathCount > 0 ? (totalDistance / pathCount) : 0;  
+            }  
+
+            // 计算节点中心性  
+            calculateNodeCentrality() {  
+                const centrality = {};  
+
+                this.nodes.forEach(node => {  
+                    // 度中心性  
+                    const degree = this.links.filter(l =>   
+                        l.source.id === node.id || l.target.id === node.id  
+                    ).length;  
+
+                    // 接近中心性  
+                    let totalDistance = 0;  
+                    let reachableNodes = 0;  
+                    this.nodes.forEach(other => {  
+                        if (node.id !== other.id) {  
+                            const distance = this.findShortestPath(node.id, other.id);  
+                            if (distance !== Infinity) {  
+                                totalDistance += distance;  
+                                reachableNodes++;  
+                            }  
+                        }  
+                    });  
+                    const closeness = reachableNodes ?   
+                        reachableNodes / totalDistance : 0;  
+
+                    centrality[node.id] = {  
+                        degree: degree / (this.nodes.length - 1),  
+                        closeness: closeness  
+                    };  
+                });  
+
+                return centrality;  
+            }  
+
+            // 查找最短路径  
+            findShortestPath(startId, endId) {  
+                const distances = {};  
+                const unvisited = new Set(this.nodes.map(n => n.id));  
+
+                // 初始化距离  
+                this.nodes.forEach(node => {  
+                    distances[node.id] = Infinity;  
+                });  
+                distances[startId] = 0;  
+
+                while (unvisited.size > 0) {  
+                    // 找到距离最小的未访问节点  
+                    let minDistance = Infinity;  
+                    let minNode = null;  
+                    unvisited.forEach(nodeId => {  
+                        if (distances[nodeId] < minDistance) {  
+                            minDistance = distances[nodeId];  
+                            minNode = nodeId;  
+                        }  
+                    });  
+
+                    if (minNode === null) break;  
+                    if (minNode === endId) break;  
+
+                    unvisited.delete(minNode);  
+
+                    // 更新邻居节点的距离  
+                    const neighbors = this.links.filter(l =>   
+                        l.source.id === minNode || l.target.id === minNode  
+                    );  
+
+                    neighbors.forEach(link => {  
+                        const neighbor = link.source.id === minNode ?   
+                            link.target.id : link.source.id;  
+                        const alt = distances[minNode] + link.distance;  
+                        if (alt < distances[neighbor]) {  
+                            distances[neighbor] = alt;  
+                        }  
+                    });  
+                }  
+
+                return distances[endId];  
+            }  
+
+            // 识别关键节点  
+            identifyCriticalNodes() {  
+                const centrality = this.calculateNodeCentrality();  
+                const criticalNodes = [];  
+
+                // 计算中心性指标的阈值  
+                const degreeValues = Object.values(centrality).map(d => d.degree);  
+                const degreeMean = d3.mean(degreeValues);  
+                const degreeStd = d3.deviation(degreeValues);  
+                const threshold = degreeMean + degreeStd;  
+
+                // 识别关键节点  
+                Object.entries(centrality).forEach(([nodeId, metrics]) => {  
+                    if (metrics.degree > threshold) {  
+                        const node = this.nodes.find(n => n.id === nodeId);  
+                        criticalNodes.push({  
+                            node: node,  
+                            metrics: metrics,  
+                            importance: metrics.degree * metrics.closeness  
+                        });  
+                    }  
+                });  
+
+                return criticalNodes.sort((a, b) => b.importance - a.importance);  
+            }  
+        }  
+
+        // 网络分析核心功能实现  
+        class NetworkAnalyzer {  
+            constructor(nodes, links, width, height) {  
+                this.nodes = nodes;  
+                this.links = links;  
+
+                // 力导向图配置  
+                this.simulation = d3.forceSimulation(this.nodes)  
+                    .force("link", d3.forceLink(this.links)  
+                        .id(d => d.id)  
+                        .distance(d => this.calculateDistance(d)))  
+                    .force("charge", d3.forceManyBody()  
+                        .strength(-300))  
+                    .force("center", d3.forceCenter(width / 2, height / 2))  
+                    .force("collision", d3.forceCollide().radius(30));  
+            }  
+
+            // 计算连接距离（基于实际距离进行缩放）  
+            calculateDistance(link) {  
+                const baseDistance = 100;  
+                const scale = 0.5; // 缩放因子  
+                return baseDistance + link.distance * scale;  
+            }  
+
+            // 计算节点重要性（基于连接数和流量）  
+            calculateNodeImportance(node) {  
+                const connections = this.links.filter(l =>   
+                    l.source.id === node.id || l.target.id === node.id  
+                );  
+
+                const totalFlow = connections.reduce((sum, link) =>   
+                    sum + (link.flow || 0), 0);  
+
+                return {  
+                    degree: connections.length,  
+                    flow: totalFlow,  
+                    normalized: (connections.length * totalFlow) /   
+                               (this.nodes.length * this.getMaxFlow())  
+                };  
+            }  
+
+            // 获取最大流量  
+            getMaxFlow() {  
+                return d3.max(this.links, l => l.flow || 0) || 1;  
+            }  
+
+            // 更新数据
+            updateData(newNodes, newLinks) {
+                this.nodes = newNodes;
+                this.links = newLinks;
+                this.simulation.nodes(this.nodes);
+                this.simulation.force("link").links(this.links);
+                this.simulation.alpha(1).restart();
+            }
+        }  
+
+        // 渲染管理器  
+        class NetworkRenderer {  
+            constructor(svg, analyzer) {  
+                this.svg = svg;  
+                this.analyzer = analyzer;  
+
+                // 创建箭头标记  
+                this.svg.append("defs").append("marker")  
+                    .attr("id", "arrow")  
+                    .attr("viewBox", "0 -5 10 10")  
+                    .attr("refX", 20)  
+                    .attr("refY", 0)  
+                    .attr("markerWidth", 6)  
+                    .attr("markerHeight", 6)  
+                    .attr("orient", "auto")  
+                    .append("path")  
+                    .attr("d", "M0,-5L10,0L0,5")  
+                    .attr("fill", "#718096");  
+
+                this.linkGroup = this.svg.append("g")  
+                    .attr("class", "links");  
+
+                this.nodeGroup = this.svg.append("g")  
+                    .attr("class", "nodes");  
+
+                this.labelGroup = this.svg.append("g")  
+                    .attr("class", "labels");  
+
+                // 添加缩放和平移功能
+                this.zoom = d3.zoom()
+                    .scaleExtent([0.2, 4])
+                    .on('zoom', (event) => this.zoomed(event));
+
+                this.svg.call(this.zoom);
+
+                this.g = this.svg.append('g');
+
+                this.zoomed = function(event) {
+                    this.g.attr('transform', event.transform);
+                }.bind(this);
+            }  
+
+            // 更新视图  
+            update() {  
+                // 绘制连接  
+                const links = this.linkGroup  
+                    .selectAll(".link")  
+                    .data(this.analyzer.links, d => d.id)  
+                    .join("line")  
+                    .attr("class", "link")  
+                    .attr("marker-end", "url(#arrow)")  
+                    .style("stroke-width", d => {  
+                        const flow = d.flow || 1;  
+                        return Math.sqrt(flow) + 1;  
+                    });  
+
+                // 绘制节点  
+                const nodes = this.nodeGroup  
+                    .selectAll(".node")  
+                    .data(this.analyzer.nodes, d => d.id)  
+                    .join("g")  
+                    .attr("class", "node")  
+                    .call(this.dragBehavior());  
+
+                // 节点圆形  
+                nodes.selectAll("circle")  
+                    .data(d => [d])  
+                    .join("circle")  
+                    .attr("r", d => {  
+                        const importance = this.analyzer.calculateNodeImportance(d);  
+                        return 5 + importance.normalized * 15;  
+                    });  
+
+                // 节点标签  
+                const labels = this.labelGroup  
+                    .selectAll(".label")  
+                    .data(this.analyzer.nodes, d => d.id)  
+                    .join("text")  
+                    .attr("class", "label")  
+                    .text(d => d.id)  
+                    .attr("dy", -10);  
+
+                // 更新力导向图  
+                this.analyzer.simulation  
+                    .on("tick", () => {  
+                        links  
+                            .attr("x1", d => d.source.x)  
+                            .attr("y1", d => d.source.y)  
+                            .attr("x2", d => d.target.x)  
+                            .attr("y2", d => d.target.y);  
+
+                        nodes  
+                            .attr("transform", d =>   
+                                `translate(${d.x},${d.y})`);  
+
+                        labels  
+                            .attr("x", d => d.x)  
+                            .attr("y", d => d.y);  
+                    });  
+            }  
+
+            // 拖拽行为  
+            dragBehavior() {  
+                return d3.drag()  
+                    .on("start", (event, d) => {  
+                        if (!event.active)   
+                            this.analyzer.simulation.alphaTarget(0.3).restart();  
+                        d.fx = d.x;  
+                        d.fy = d.y;  
+                    })  
+                    .on("drag", (event, d) => {  
+                        d.fx = event.x;  
+                        d.fy = event.y;  
+                    })  
+                    .on("end", (event, d) => {  
+                        if (!event.active)   
+                            this.analyzer.simulation.alphaTarget(0);  
+                        d.fx = null;  
+                        d.fy = null;  
+                    });  
+            }  
+        }  
+
+        // 交互事件处理器  
+        class InteractionHandler {  
+            constructor(renderer, metrics) {  
+                this.renderer = renderer;  
+                this.metrics = metrics;  
+                this.selectedNode = null;  
+                this.highlightedPath = null;  
+
+                this.setupEventListeners();  
+            }  
+
+            setupEventListeners() {  
+                // 节点点击事件  
+                this.renderer.nodeGroup.selectAll(".node")  
+                    .on("click", (event, d) => this.handleNodeClick(event, d))  
+                    .on("mouseover", (event, d) => this.handleNodeHover(event, d))  
+                    .on("mouseout", () => this.handleNodeLeave());  
+
+                // 连接悬停事件  
+                this.renderer.linkGroup.selectAll(".link")  
+                    .on("mouseover", (event, d) => this.handleLinkHover(event, d))  
+                    .on("mouseout", () => this.handleLinkLeave());  
+            }  
+
+            handleNodeClick(event, node) {  
+                if (this.selectedNode === node) {  
+                    this.clearSelection();  
+                } else {  
+                    this.selectNode(node);  
+                }  
+            }  
+
+            selectNode(node) {  
+                this.selectedNode = node;  
+
+                // 高亮选中节点  
+                this.renderer.nodeGroup.selectAll(".node")  
+                    .classed("selected", d => d === node);  
+
+                // 更新相关指标显示  
+                this.updateMetricsDisplay(node);  
+            }  
+
+            clearSelection() {  
+                this.selectedNode = null;  
+                this.renderer.nodeGroup.selectAll(".node")  
+                    .classed("selected", false);  
+                this.clearMetricsDisplay();  
+            }  
+
+            handleNodeHover(event, node) {  
+                // 显示节点详细信息  
+                const tooltip = d3.select('.tooltip');  
+                const metrics = this.metrics.calculateNodeCentrality()[node.id];  
+
+                tooltip.style('opacity', 1)  
+                    .html(`  
+                        <div class="tooltip-content">  
+                            <div>站点: ${node.id}</div>  
+                            <div>连接数: ${Math.round(metrics.degree * (this.metrics.nodes.length - 1))}</div>  
+                            <div>中心性: ${metrics.closeness.toFixed(3)}</div>  
+                        </div>  
+                    `)  
+                    .style('left', (event.pageX + 10) + 'px')  
+                    .style('top', (event.pageY - 10) + 'px');  
+
+                // 高亮相关连接  
+                this.renderer.linkGroup.selectAll('.link')  
+                    .style('opacity', l =>   
+                        (l.source.id === node.id || l.target.id === node.id) ? 1 : 0.2);  
+            }  
+
+            handleNodeLeave() {  
+                d3.select('.tooltip').style('opacity', 0);  
+                this.renderer.linkGroup.selectAll('.link')  
+                    .style('opacity', 0.6);  
+            }  
+
+            handleLinkHover(event, link) {  
+                const tooltip = d3.select('.tooltip');  
+
+                tooltip.style('opacity', 1)  
+                    .html(`  
+                        <div class="tooltip-content">  
+                            <div>${link.source.id} → ${link.target.id}</div>  
+                            <div>距离: ${link.distance}km</div>  
+                            <div>运行时间: ${link.time ? link.time + 'min' : 'N/A'}</div>  
+                            ${link.flow ? `<div>流量: ${link.flow}</div>` : ''}  
+                        </div>  
+                    `)  
+                    .style('left', (event.pageX + 10) + 'px')  
+                    .style('top', (event.pageY - 10) + 'px');  
+            }  
+
+            handleLinkLeave() {  
+                d3.select('.tooltip').style('opacity', 0);  
+            }  
+
+            updateMetricsDisplay(node) {  
+                const metricsDiv = d3.select('#key-metrics');  
+                const connections = this.metrics.links.filter(l =>   
+                    l.source.id === node.id || l.target.id === node.id  
+                );  
+
+                metricsDiv.html(`  
+                    <div class="metric-detail">  
+                        <h4>站点分析</h4>  
+                        <div class="metrics-grid">  
+                            <div class="metric-item">  
+                                <span>连接数</span>  
+                                <strong>${connections.length}</strong>  
+                            </div>  
+                            <div class="metric-item">  
+                                <span>总流量</span>  
+                                <strong>${connections.reduce((sum, l) => sum + (l.flow || 0), 0)}</strong>  
+                            </div>  
+                        </div>  
+                    </div>  
+                `);  
+            }  
+
+            clearMetricsDisplay() {  
+                d3.select('#key-metrics').html('');  
+            }  
+        }  
+
+        // 网络可视化更新管理器  
+        class NetworkVisualizer {  
+            constructor(renderer, metrics, handler) {  
+                this.renderer = renderer;  
+                this.metrics = metrics;  
+                this.handler = handler;  
+                this.colorScale = d3.scaleSequential(d3.interpolateYlOrRd);  
+            }  
+
+            updateVisualization() {  
+                const centrality = this.metrics.calculateNodeCentrality();  
+                const maxCentrality = d3.max(Object.values(centrality), d => d.degree) || 1;  
+                this.colorScale.domain([0, maxCentrality]);  
+
+                // 更新节点样式  
+                this.renderer.nodeGroup.selectAll('.node circle')  
+                    .transition()  
+                    .duration(750)  
+                    .attr('r', d => {  
+                        const metrics = centrality[d.id];  
+                        return 5 + metrics.degree * 5;  
+                    })  
+                    .style('fill', d => this.colorScale(centrality[d.id].degree));  
+
+                // 更新连接样式  
+                this.renderer.linkGroup.selectAll('.link')  
+                    .transition()  
+                    .duration(750)  
+                    .style('stroke-width', d => {  
+                        const flow = d.flow || 1;  
+                        return Math.sqrt(flow) + 1;  
+                    });  
+
+                // 更新网络统计信息  
+                this.updateNetworkStats();  
+
+                // 更新渲染
+                this.renderer.update();  
+            }  
+
+            updateNetworkStats() {  
+                const density = this.metrics.calculateDensity();  
+                const avgPathLength = this.metrics.calculateAveragePathLength();  
+                const criticalNodes = this.metrics.identifyCriticalNodes();  
+
+                d3.select('#network-stats').html(`  
+                    <div class="metrics-grid">  
+                        <div class="metric-item">  
+                            <span>网络密度</span>  
+                            <strong>${density.toFixed(3)}</strong>  
+                        </div>  
+                        <div class="metric-item">  
+                            <span>平均路径长度</span>  
+                            <strong>${avgPathLength.toFixed(1)}km</strong>  
+                        </div>  
+                        <div class="metric-item">  
+                            <span>关键节点数</span>  
+                            <strong>${criticalNodes.length}</strong>  
+                        </div>  
+                    </div>  
+                `);  
+            }  
+
+            highlightPath(path) {  
+                // 重置所有连接的样式  
+                this.renderer.linkGroup.selectAll('.link')  
+                    .classed('highlighted', false)  
+                    .style('opacity', 0.2);  
+
+                // 高亮路径  
+                path.forEach((link, i) => {  
+                    this.renderer.linkGroup.selectAll('.link')  
+                        .filter(d => d.id === link.id)  
+                        .classed('highlighted', true)  
+                        .style('opacity', 1)  
+                        .style('stroke-dasharray', '5,5')  
+                        .style('stroke-dashoffset', i * 10);  
+                });  
+            }  
+
+            clearHighlight() {  
+                this.renderer.linkGroup.selectAll('.link')  
+                    .classed('highlighted', false)  
+                    .style('opacity', 0.6)  
+                    .style('stroke-dasharray', null);  
+            }  
+        }  
+
+        // 性能优化器  
+        class PerformanceOptimizer {  
+            constructor(renderer, analyzer) {  
+                this.renderer = renderer;  
+                this.analyzer = analyzer;  
+                this.frameCount = 0;  
+                this.lastTime = performance.now();  
+            }  
+
+            startMonitoring() {  
+                this.monitorFrameRate();  
+                this.optimizeForceSimulation();  
+            }  
+
+            monitorFrameRate() {  
+                this.frameCount++;  
+                const currentTime = performance.now();  
+
+                if (currentTime - this.lastTime >= 1000) {  
+                    const fps = this.frameCount;  
+                    this.frameCount = 0;  
+                    this.lastTime = currentTime;  
+
+                    if (fps < 30) {  
+                        this.applyOptimizations();  
+                    }  
+                }  
+
+                requestAnimationFrame(() => this.monitorFrameRate());  
+            }  
+
+            optimizeForceSimulation() {  
+                const simulation = this.analyzer.simulation;  
+
+                // 动态调整力导向参数  
+                simulation.force('charge')  
+                    .strength(d => {  
+                        const nodeCount = this.analyzer.nodes.length;  
+                        return nodeCount > 100 ? -500 : -300;  
+                    });  
+
+                // 减少迭代次数  
+                simulation.alphaDecay(0.02);  
+            }  
+
+            applyOptimizations() {  
+                // 简化渲染  
+                this.renderer.nodeGroup.selectAll('.node text')  
+                    .style('display', d => {  
+                        const metrics = this.analyzer.calculateNodeImportance(d);  
+                        return metrics.normalized > 0.5 ? null : 'none';  
+                    });  
+
+                // 减少连接线的细节  
+                this.renderer.linkGroup.selectAll('.link')  
+                    .style('stroke-width', 1);  
+            }  
+        }  
+
+        // 分析报告生成器  
+        class ReportGenerator {  
+            constructor(metrics, dataManager) {  
+                this.metrics = metrics;  
+                this.dataManager = dataManager;  
+            }  
+
+            generateReport() {  
+                const snapshot = this.dataManager.getSnapshot();  
+                const centrality = this.metrics.calculateNodeCentrality();  
+                const criticalNodes = this.metrics.identifyCriticalNodes();  
+                const density = this.metrics.calculateDensity();  
+                const avgPathLength = this.metrics.calculateAveragePathLength();  
+
+                return {  
+                    timestamp: snapshot.timestamp,  
+                    summary: this.generateSummary(snapshot),  
+                    networkMetrics: this.calculateNetworkMetrics(snapshot),  
+                    criticalComponents: this.identifyCriticalComponents(criticalNodes),  
+                    recommendations: this.generateRecommendations()  
+                };  
+            }  
+
+            generateSummary(snapshot) {  
+                return {  
+                    totalNodes: snapshot.nodes.length,  
+                    totalLinks: snapshot.links.length,  
+                    networkDensity: this.metrics.calculateDensity(),  
+                    averagePathLength: this.metrics.calculateAveragePathLength(),  
+                    lastUpdate: new Date(snapshot.timestamp).toLocaleString()  
+                };  
+            }  
+
+            calculateNetworkMetrics(snapshot) {  
+                const linkDistances = snapshot.links.map(l => l.distance);  
+                const linkFlows = snapshot.links.map(l => l.flow || 0);  
+
+                return {  
+                    distances: {  
+                        min: d3.min(linkDistances) || 0,  
+                        max: d3.max(linkDistances) || 0,  
+                        average: d3.mean(linkDistances) || 0,  
+                        total: d3.sum(linkDistances) || 0  
+                    },  
+                    flows: {  
+                        min: d3.min(linkFlows) || 0,  
+                        max: d3.max(linkFlows) || 0,  
+                        average: d3.mean(linkFlows) || 0,  
+                        total: d3.sum(linkFlows) || 0  
+                    }  
+                };  
+            }  
+
+            identifyCriticalComponents(criticalNodes) {  
+                return {  
+                    nodes: criticalNodes.map(n => ({  
+                        id: n.node.id,  
+                        importance: n.importance,  
+                        metrics: n.metrics  
+                    })),  
+                    bottlenecks: this.findBottlenecks()  
+                };  
+            }  
+
+            findBottlenecks() {  
+                const snapshot = this.dataManager.getSnapshot();  
+                return snapshot.links  
+                    .filter(link => {  
+                        const utilization = (link.flow || 0) / (link.capacity || 100);  
+                        return utilization > 0.8;  
+                    })  
+                    .map(link => ({  
+                        source: link.source,  
+                        target: link.target,  
+                        utilization: ((link.flow || 0) / (link.capacity || 100)) * 100,  
+                        flow: link.flow || 0  
+                    }))  
+                    .sort((a, b) => b.utilization - a.utilization);  
+            }  
+
+            generateRecommendations() {  
+                const bottlenecks = this.findBottlenecks();  
+                const recommendations = [];  
+
+                // 基于瓶颈分析的建议  
+                if (bottlenecks.length > 0) {  
+                    recommendations.push({  
+                        type: 'capacity',  
+                        priority: 'high',  
+                        description: '发现高负载路段，建议增加运力',  
+                        details: bottlenecks.slice(0, 3).map(b =>   
+                            `${b.source} - ${b.target}: 利用率 ${b.utilization.toFixed(1)}%`)  
+                    });  
+                }  
+
+                // 基于网络结构的建议  
+                const density = this.metrics.calculateDensity();  
+                if (density < 0.1) {  
+                    recommendations.push({  
+                        type: 'connectivity',  
+                        priority: 'medium',  
+                        description: '网络连通性较低，建议增加备用路线',  
+                        details: ['考虑在关键节点间添加新的连接']  
+                    });  
+                }  
+
+                return recommendations;  
+            }  
+
+            // 生成HTML格式的报告  
+            generateHtmlReport() {  
+                const report = this.generateReport();  
+
+                return `  
+                    <div class="report-container">  
+                        <h2>网络分析报告</h2>  
+                        <div class="report-timestamp">  
+                            生成时间: ${new Date(report.timestamp).toLocaleString()}  
+                        </div>  
+
+                        <section class="report-section">  
+                            <h3>网络概况</h3>  
+                            <div class="metrics-grid">  
+                                <div class="metric-item">  
+                                    <span>节点总数</span>  
+                                    <strong>${report.summary.totalNodes}</strong>  
+                                </div>  
+                                <div class="metric-item">  
+                                    <span>连接总数</span>  
+                                    <strong>${report.summary.totalLinks}</strong>  
+                                </div>  
+                                <div class="metric-item">  
+                                    <span>网络密度</span>  
+                                    <strong>${report.summary.networkDensity.toFixed(3)}</strong>  
+                                </div>  
+                                <div class="metric-item">  
+                                    <span>平均路径长度</span>  
+                                    <strong>${report.summary.averagePathLength.toFixed(1)}km</strong>  
+                                </div>  
+                            </div>  
+                        </section>  
+
+                        <section class="report-section">  
+                            <h3>关键组件</h3>  
+                            <div class="critical-nodes">  
+                                ${report.criticalComponents.nodes  
+                                    .slice(0, 5)  
+                                    .map(node => `  
+                                        <div class="node-item">  
+                                            <strong>${node.id}</strong>  
+                                            <span>重要度: ${node.importance.toFixed(3)}</span>  
+                                        </div>  
+                                    `).join('')}  
+                            </div>  
+                        </section>  
+
+                        <section class="report-section">  
+                            <h3>建议措施</h3>  
+                            <div class="recommendations">  
+                                ${report.recommendations  
+                                    .map(rec => `  
+                                        <div class="recommendation-item ${rec.priority}">  
+                                            <h4>${rec.description}</h4>  
+                                            <ul>  
+                                                ${rec.details  
+                                                    .map(detail => `<li>${detail}</li>`)  
+                                                    .join('')}  
+                                            </ul>  
+                                        </div>  
+                                    `).join('')}  
+                            </div>  
+                        </section>  
+                    </div>  
+                `;  
+            }  
+        }  
+
+        // 测试数据生成器  
+        class TestDataGenerator {  
+            static generateRandomNetwork(nodeCount = 30, density = 0.15) {  
+                const nodes = [];  
+                const links = [];  
+
+                // 生成节点  
+                for (let i = 0; i < nodeCount; i++) {  
+                    nodes.push({  
+                        id: `N${i}`,  
+                        type: Math.random() > 0.7 ? 'hub' : 'station',  
+                        capacity: Math.floor(Math.random() * 1000) + 200  
+                    });  
+                }  
+
+                // 生成连接  
+                const maxLinks = Math.floor(nodeCount * (nodeCount - 1) * density / 2);  
+                for (let i = 0; i < maxLinks; i++) {  
+                    const source = nodes[Math.floor(Math.random() * nodes.length)];  
+                    let target;  
+                    do {  
+                        target = nodes[Math.floor(Math.random() * nodes.length)];  
+                    } while (source === target || links.some(l => (l.source === source.id && l.target === target.id) || (l.source === target.id && l.target === source.id)));  
+
+                    links.push({  
+                        source: source.id,  
+                        target: target.id,  
+                        distance: Math.floor(Math.random() * 100) + 20,  
+                        flow: Math.floor(Math.random() * 200),  
+                        capacity: Math.floor(Math.random() * 300) + 100  
+                    });  
+                }  
+
+                return { nodes, links };  
+            }  
+
+            static generateTimeSeriesData(network, timePoints = 24) {  
+                const timeSeriesData = [];  
+                const baseTime = Date.now() - timePoints * 3600 * 1000;  
+
+                for (let i = 0; i < timePoints; i++) {  
+                    const timestamp = baseTime + i * 3600 * 1000;  
+                    const snapshot = {  
+                        timestamp,  
+                        links: network.links.map(link => ({  
+                            ...link,  
+                            flow: Math.max(0, link.flow + Math.floor(Math.random() * 40) - 20)  
+                        }))  
+                    };  
+                    timeSeriesData.push(snapshot);  
+                }  
+
+                return timeSeriesData;  
+            }  
+        }  
+
+        // 网络可视化应用程序协调器  
+        class NetworkAnalysisApp {  
+            constructor(containerId) {  
+                this.container = d3.select(containerId);  
+                this.eventBus = new EventBus();  
+                this.setupComponents();  
+                this.bindEvents();  
+            }  
+
+            setupComponents() {  
+                // 获取SVG大小  
+                const svgElement = this.container.select('#network-svg').node();
+                this.width = svgElement.clientWidth || 800;
+                this.height = svgElement.clientHeight || 600;
+
+                // 初始化DataManager  
+                this.dataManager = new DataManager();  
+
+                // 初始化组件  
+                this.metrics = new NetworkMetrics([], []);  
+                this.analyzer = new NetworkAnalyzer([], [], this.width, this.height);  
+                this.renderer = new NetworkRenderer(this.container.select('#network-svg'), this.analyzer);  
+                this.handler = new InteractionHandler(this.renderer, this.metrics);  
+                this.visualizer = new NetworkVisualizer(this.renderer, this.metrics, this.handler);  
+                this.reportGenerator = new ReportGenerator(this.metrics, this.dataManager);  
+                this.optimizer = new PerformanceOptimizer(this.renderer, this.analyzer);  
+
+                // 启动性能监控  
+                this.optimizer.startMonitoring();  
+
+                // 观察者模式：当数据更新时，更新分析和可视化  
+                this.dataManager.addObserver({  
+                    onDataUpdate: (event, data) => {  
+                        this.updateVisualization();  
+                    }  
+                });  
+            }  
+
+            bindEvents() {  
+                // 按钮事件  
+                d3.select('#reset-view').on('click', () => {  
+                    this.resetView();  
+                });
+
+                d3.select('#generate-report').on('click', () => {  
+                    this.showReport();  
+                });
+
+                d3.select('#export-analysis').on('click', () => {  
+                    this.exportReport();  
+                });
+
+                // 分析模式切换  
+                this.container.selectAll('.mode-option').on('click', (event, d) => {  
+                    this.switchMode(event, d);  
+                });
+            }  
+
+            updateVisualization() {  
+                const snapshot = this.dataManager.getSnapshot();  
+                this.analyzer.updateData(snapshot.nodes, snapshot.links);  
+                this.metrics.nodes = snapshot.nodes;  
+                this.metrics.links = snapshot.links;  
+                this.visualizer.updateVisualization();  
+            }  
+
+            loadData(data) {  
+                this.dataManager.batchUpdate(data);  
+            }  
+
+            generateReport() {  
+                return this.reportGenerator.generateHtmlReport();  
+            }  
+
+            showReport() {  
+                const reportHtml = this.generateReport();  
+                const reportContainer = d3.select('#report-container');  
+                reportContainer.html(reportHtml).style('display', 'block');  
+            }  
+
+            exportReport() {  
+                const reportHtml = this.generateReport();  
+                const blob = new Blob([reportHtml], { type: 'text/html' });  
+                const url = URL.createObjectURL(blob);  
+                const a = document.createElement('a');  
+                a.href = url;  
+                a.download = 'network_analysis_report.html';  
+                a.click();  
+                URL.revokeObjectURL(url);  
+            }  
+
+            resetView() {  
+                this.container.select('#network-svg').transition()  
+                    .duration(750)  
+                    .call(this.renderer.zoom.transform, d3.zoomIdentity);  
+            }  
+
+            switchMode(event, d) {  
+                // 移除所有选中的模式  
+                this.container.selectAll('.mode-option').classed('active', false);  
+                // 添加当前选中的模式  
+                d3.select(event.currentTarget).classed('active', true);  
+                const mode = d3.select(event.currentTarget).attr('data-mode');  
+                // 根据模式执行相应的操作  
+                console.log(`切换到分析模式: ${mode}`);  
+                // 这里可以添加不同模式下的逻辑  
+            }  
+
+            loadInitialData() {  
+                // 生成测试数据  
+                const testNetwork = TestDataGenerator.generateRandomNetwork(30, 0.15);  
+                const timeSeriesData = TestDataGenerator.generateTimeSeriesData(testNetwork);  
+
+                // 加载初始数据  
+                this.loadData(testNetwork);  
+
+                // 设置定时更新  
+                let currentTimePoint = 0;  
+                setInterval(() => {  
+                    if (currentTimePoint < timeSeriesData.length) {  
+                        this.loadData({  
+                            links: timeSeriesData[currentTimePoint].links  
+                        });  
+                        currentTimePoint++;  
+                    }  
+                }, 5000);  
+            }  
+        }  
+
+        // 应用程序初始化
+        document.addEventListener('DOMContentLoaded', () => {  
+            // 初始化应用  
+            const app = new NetworkAnalysisApp('#network-container');  
+
+            // 加载初始数据  
+            app.loadInitialData();  
+        });  
+    </script>
+</body>
+</html>
