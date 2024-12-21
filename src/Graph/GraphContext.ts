@@ -84,7 +84,8 @@ export class GraphContext {
     });
 
     graphEventManager.on("EdgeAdded", (id: string) => {
-      const [sourceId, targetId] = id.split("->");
+      const sourceId = Graph.getSourceId(id);
+      const targetId = Graph.getTargetId(id);
       const distance = this.graph.getEdgeById(id)!.length * (this.model === "distance" ? 1 : 3);
 
       const edgeData =
@@ -94,6 +95,7 @@ export class GraphContext {
         this.ctx.data.adjacencyTable()[sourceId][targetId] = {
           id,
           name: id,
+          trainShifts: 0,
           params: [distance, 3 * distance, 0],
         };
       }
@@ -102,7 +104,8 @@ export class GraphContext {
     });
 
     graphEventManager.on("EdgeRemoved", (id: string) => {
-      const [sourceId, targetId] = id.split("->");
+      const sourceId = Graph.getSourceId(id);
+      const targetId = Graph.getTargetId(id);
       delete this.ctx.data.adjacencyTable()[sourceId][targetId];
       if (!this.isiniting) this.ctx.onParamChange(id);
     });
@@ -195,5 +198,21 @@ export class GraphContext {
 
   public exploreParams(dataCategory: string, id: string): void {
     return this.ctx.exploreParams(dataCategory, id);
+  }
+
+  public renderShorestPath(sourceId: string, targetId: string): void {
+    this.ctx.renderShorestPath(sourceId, targetId);
+    const pathInfo = this.ctx.shortestPath.get(
+      sourceId,
+      targetId,
+      this.model == "distance" ? 1 : 0
+    );
+    console.log("pathInfo", pathInfo);
+    this.simulator!.renderTrainLine(pathInfo.passByNodesId, pathInfo.passByEdgesId);
+  }
+
+  resetShorestPath(): void {
+    this.ctx.resetShorestPath();
+    this.simulator!.clearTrainLine();
   }
 }

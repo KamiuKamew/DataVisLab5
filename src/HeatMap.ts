@@ -76,7 +76,8 @@ export class HeatMap {
       .attr("y", (d) => yScale(d.target)!)
       .attr("width", xScale.bandwidth())
       .attr("height", yScale.bandwidth())
-      .attr("fill", (d) => (d.param === Infinity ? "black" : colorScale(d.param)));
+      .attr("fill", (d) => (d.param === Infinity ? "black" : colorScale(d.param)))
+      .attr("class", (d) => `cell-${d.source}-${d.target}`.replace(/\s+/g, "-"));
 
     // Add axes
     const xAxis = d3.axisBottom(xScale);
@@ -127,5 +128,24 @@ export class HeatMap {
       .style("fill", "url(#legendGradient)");
 
     legendSvg.append("g").attr("transform", `translate(0, ${legendHeight})`).call(legendAxis);
+  }
+
+  public clear(): void {
+    // Clear SVG for new rendering
+    this.svg.select("g").selectAll("*").remove();
+  }
+
+  public highlightCell(source: string, target: string): void {
+    // Clear previous highlights
+    this.svg.selectAll("rect").style("stroke", "none");
+
+    // Highlight the specific cell
+    const cellClass = `.cell-${source}-${target}`.replace(/\s+/g, "-");
+    this.svg.select(cellClass).style("stroke", "blue").style("stroke-width", "2px");
+  }
+
+  public clearHighlight(): void {
+    // Clear previous highlights
+    this.svg.selectAll("rect").style("stroke", "none");
   }
 }

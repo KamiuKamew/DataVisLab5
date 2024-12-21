@@ -19,6 +19,9 @@ export class MapContext {
   public zoom: d3.ZoomBehavior<SVGSVGElement, unknown>;
   public projection: d3.GeoProjection;
 
+  private selectedNode1: string = "";
+  private selectedNode2: string = "";
+
   constructor(private ctx: Context) {
     this.svg = d3.select("svg");
     this.g = this.svg.append("g").attr("class", "g");
@@ -39,6 +42,10 @@ export class MapContext {
       .center([100, 38]) // 设置地图的中心（可以根据数据调整）
       .scale(800) // 缩放级别（根据数据调整）
       .translate([this.width / 2, this.height / 2]); // 平移到屏幕中心
+
+    d3.select("svg").on("contextmenu", (event: MouseEvent) => {
+      event.preventDefault(); // 阻止右键菜单
+    });
   }
 
   // 重置视图
@@ -59,6 +66,9 @@ export class MapContext {
     provinces.each((d: any) => {
       d.clicked = false;
     });
+
+    this.selectedNode1 = "";
+    this.selectedNode2 = "";
   }
 
   // 点击州时的缩放
@@ -108,7 +118,7 @@ export class MapContext {
     this.gNodes
       .selectAll("circle")
       .attr("r", 5 / transform.k)
-      .attr("stroke-width", 1 / transform.k); // 这里的 5 是节点的默认半径
+      .attr("stroke-width", this.nodeStrokeWidthEncoder(transform, 2)); // 这里的 5 是节点的默认半径
 
     // 调整线的粗细
     this.gLines.selectAll("path").attr("stroke-width", this.lineWidthEncoder(transform));
@@ -185,21 +195,45 @@ export class MapContext {
       .selectAll("circle")
       .data(Object.entries(nodesData))
       .join("circle")
+      .attr("id", (d: any) => d[0]) // 设置节点的 id 属性
       .attr("cx", (d: any) => this.projection(d[1]["geo_info"])![0]) // x 坐标
       .attr("cy", (d: any) => this.projection(d[1]["geo_info"])![1]) // y 坐标
       .attr("r", 5 / transform.k) // 设置圆的半径
       .attr("fill", this.nodeColorEncoder()) // 设置圆的填充颜色
-      .attr("stroke", "white") // 设置圆的边框颜色
-      .attr("stroke-width", 1 / transform.k)
+      .attr("stroke", "black") // 设置圆的边框颜色
+      .attr("stroke-width", this.nodeStrokeWidthEncoder(transform, 2))
       // .attr(Names.DataCategory, Names.DataCategory_Station)
       .on("mouseover", (event: MouseEvent, d: any) => {
         console.log("[MapContext] mouseover node: ", d);
       })
-      .on("click", (event: MouseEvent, d: any) => {
+      .on("mousedown", (event: MouseEvent, d: any) => {
         // 阻止事件传播
+        event.preventDefault();
         event.stopPropagation();
         console.log("[MapContext] clicked node: ", d);
+        if (event.button === 0) {
+          if (this.selectedNode1 === d[0]) {
+            this.selectedNode1 = "";
+            d3.select(event.currentTarget as HTMLElement).attr("stroke", "black");
+          } else {
+            if (this.selectedNode1) d3.select(`#${this.selectedNode1}`).attr("stroke", "black");
+            this.selectedNode1 = d[0];
+            d3.select(event.currentTarget as HTMLElement).attr("stroke", "red");
+          }
+        } else if (event.button === 2) {
+          if (this.selectedNode2 === d[0]) {
+            this.selectedNode2 = "";
+            d3.select(event.currentTarget as HTMLElement).attr("stroke", "black");
+          } else {
+            if (this.selectedNode2) d3.select(`#${this.selectedNode2}`).attr("stroke", "black");
+            this.selectedNode2 = d[0];
+            d3.select(event.currentTarget as HTMLElement).attr("stroke", "yellow");
+          }
+        }
         this.ctx.exploreParams(Names.DataCategory_Station, d[0]);
+        this.ctx.resetShorestPath();
+        if (this.selectedNode1 && this.selectedNode2)
+          this.ctx.renderShorestPath(this.selectedNode1, this.selectedNode2);
       });
   }
 
@@ -279,6 +313,10 @@ export class MapContext {
       // 根据节点数量返回相应的颜色
       return colorScale(d[1]["access_info"]);
     };
+  }
+
+  nodeStrokeWidthEncoder(transform: d3.ZoomTransform, k: number): (d: any, i: any) => number {
+    return (d: any) => k / transform.k;
   }
 
   lineWidthEncoder(transform: d3.ZoomTransform): (d: any) => number {

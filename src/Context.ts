@@ -20,7 +20,7 @@ export class Context {
   private rightSidePanel: RightSidePanel;
   private topSidePanel: TopSidePanel;
 
-  private shortestPath!: ShortestPath;
+  public shortestPath!: ShortestPath;
 
   private densityCurve!: DensityCurve;
   private heatMap!: HeatMap;
@@ -77,6 +77,7 @@ export class Context {
     this.rerenderMap(itemId);
     this.recalculateShortestPath();
     this.rerenderDensityCurve();
+    this.rerenderHeatMap();
   }
 
   private renderMap(): void {
@@ -108,10 +109,23 @@ export class Context {
     this.mapContext.rerender(itemId);
   }
 
+  private rerenderHeatMap(): void {
+    this.heatMap.clear();
+    this.heatMap.render(0);
+  }
+
   rerenderDensityCurve(): void {
     this.densityCurve.clear();
     const paramId = this.currentModel === "distance" ? 0 : 1;
     this.densityCurve.render(paramId);
+  }
+
+  renderShorestPath(start: string, end: string): void {
+    this.heatMap.highlightCell(start, end);
+  }
+
+  resetShorestPath(): void {
+    this.heatMap.clearHighlight();
   }
 }
 

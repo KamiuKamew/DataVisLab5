@@ -170,21 +170,21 @@ export class Graph {
   }
 
   static isEdgeId(id: string): boolean {
-    return id.includes("->");
+    return id.includes("-");
   }
 
   // 通过sourcId和targetId获取边Id
   static getEdgeId(sourceId: string, targetId: string): string {
-    return `${sourceId}->${targetId}`;
+    return `${sourceId}-${targetId}`;
   }
 
   // 通过边Id获取sourceId和targetId
   static getSourceId(edgeId: string): string {
-    return edgeId.split("->")[0];
+    return edgeId.split("-")[0];
   }
 
   static getTargetId(edgeId: string): string {
-    return edgeId.split("->")[1];
+    return edgeId.split("-")[1];
   }
 
   /**

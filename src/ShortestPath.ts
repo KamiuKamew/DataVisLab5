@@ -9,7 +9,7 @@ export type ShortestPathTable = {
       name: string;
       params: {
         passByNodesId: string[];
-        passByEdgeId: string[];
+        passByEdgesId: string[];
         param: number;
       }[]; // [duration_minute, distance_km, _]
     };
@@ -23,12 +23,26 @@ export class ShortestPath {
 
   private inited = false;
 
-  constructor(data: Data) {
-    this.adjacencyTable = data.adjacencyTable();
+  constructor(private data: Data) {
+    this.adjacencyTable = {};
     this.shortestPathTable = {};
   }
 
+  getAdjacencyTable() {
+    this.adjacencyTable = {};
+    Object.keys(this.data.adjacencyTable()).forEach((source) => {
+      this.adjacencyTable[source] = {};
+    });
+    Object.entries(this.data.adjacencyTable()).forEach(([source, node]) => {
+      Object.entries(node).forEach(([target, edge]) => {
+        this.adjacencyTable[source][target] = edge;
+        this.adjacencyTable[target][source] = edge;
+      });
+    });
+  }
+
   init() {
+    this.getAdjacencyTable();
     const nodes = Object.keys(this.adjacencyTable);
     nodes.forEach((source) => {
       this.shortestPathTable[source] = {};
@@ -38,9 +52,9 @@ export class ShortestPath {
           id: name,
           name: name,
           params: [
-            { passByNodesId: [], passByEdgeId: [], param: Infinity },
-            { passByNodesId: [], passByEdgeId: [], param: Infinity },
-            { passByNodesId: [], passByEdgeId: [], param: Infinity },
+            { passByNodesId: [], passByEdgesId: [], param: Infinity },
+            { passByNodesId: [], passByEdgesId: [], param: Infinity },
+            { passByNodesId: [], passByEdgesId: [], param: Infinity },
           ],
         };
       });
@@ -115,12 +129,12 @@ export class ShortestPath {
         if (dist[target] !== Infinity) {
           this.shortestPathTable[source_name][target].params[paramId] = {
             passByNodesId: passByNodesId[target],
-            passByEdgeId: passByEdgeId[target],
+            passByEdgesId: passByEdgeId[target],
             param: dist[target],
           };
           this.shortestPathTable[target][source_name].params[paramId] = {
             passByNodesId: passByNodesId[target],
-            passByEdgeId: passByEdgeId[target],
+            passByEdgesId: passByEdgeId[target],
             param: dist[target],
           };
         }
@@ -133,11 +147,11 @@ export class ShortestPath {
     src: string,
     dst: string,
     paramId: number
-  ): { passByNodesId: string[]; passByEdgeId: string[]; param: number } {
+  ): { passByNodesId: string[]; passByEdgesId: string[]; param: number } {
     const path = this.shortestPathTable[src][dst];
 
     if (!path) {
-      return { passByNodesId: [], passByEdgeId: [], param: Infinity };
+      return { passByNodesId: [], passByEdgesId: [], param: Infinity };
     }
 
     return path.params[paramId];

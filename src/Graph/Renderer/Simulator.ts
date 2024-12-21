@@ -22,6 +22,9 @@ export class ForceSimulator {
   private draggedNode: Node | null = null; // 当前拖拽的节点
   private dragTarget: { x: number; y: number } | null = null; // 鼠标拖拽目标位置
 
+  private selectedNode1: string = ""; // 选中的第一个节点
+  private selectedNode2: string = ""; // 选中的第二个节点
+
   constructor(
     private ctx: GraphContext,
     private graph: Graph,
@@ -112,6 +115,8 @@ export class ForceSimulator {
       .attr("id", (d) => `node-${d._id}`)
       .attr("r", (d) => NODE_DEFAULT_RADIUS)
       .attr("fill", (d) => "steelblue")
+      .attr("stroke", "black")
+      .attr("stroke-width", 1)
       .each((d: any) => {
         d.hoved = false;
       })
@@ -130,6 +135,32 @@ export class ForceSimulator {
         // 阻止事件传播
         console.log("[ForceSimulator] clicked node: ", d);
         this.ctx.exploreParams(Names.DataCategory_Station, d._id);
+      })
+      .on("mousedown", (event: MouseEvent, d: any) => {
+        if (event.button === 0) {
+          if (this.selectedNode1 === d._id) {
+            this.selectedNode1 = "";
+            d3.select(event.currentTarget as HTMLElement).attr("stroke", "black");
+          } else {
+            if (this.selectedNode1)
+              d3.select(`#node-${this.selectedNode1}`).attr("stroke", "black");
+            this.selectedNode1 = d._id;
+            d3.select(event.currentTarget as HTMLElement).attr("stroke", "red");
+          }
+        } else if (event.button === 2) {
+          if (this.selectedNode2 === d._id) {
+            this.selectedNode2 = "";
+            d3.select(event.currentTarget as HTMLElement).attr("stroke", "black");
+          } else {
+            if (this.selectedNode2)
+              d3.select(`#node-${this.selectedNode2}`).attr("stroke", "black");
+            this.selectedNode2 = d._id;
+            d3.select(event.currentTarget as HTMLElement).attr("stroke", "yellow");
+          }
+        }
+        this.ctx.resetShorestPath();
+        if (this.selectedNode1 && this.selectedNode2)
+          this.ctx.renderShorestPath(this.selectedNode1, this.selectedNode2);
       })
       .call((enter) => {
         this.applyDragBehavior(enter);
@@ -196,6 +227,7 @@ export class ForceSimulator {
     link
       .enter()
       .append("line")
+      .attr("id", (d) => `edge-${d._id}`)
       .attr("stroke", "gray")
       .attr("stroke-width", 1)
       .on("click", (event: MouseEvent, d: any) => {
@@ -289,5 +321,65 @@ export class ForceSimulator {
       }
     }
     return null;
+  }
+
+  public renderTrainLine(passByNodesId: string[], passByEdgesId: string[]): void {
+    passByNodesId.forEach((nodeId) => {
+      d3.select(`#node-${nodeId}`)
+        .attr("fill", "red")
+        .on("mouseover", (event, d: any) => {
+          d3.select(event.target).attr("fill", "#ff7777");
+          d.hoved = true;
+          console.log("Mouseover on node:", d);
+        }) // 设置鼠标移入节点时变色
+        .on("mouseout", (event, d: any) => {
+          d3.select(event.target).attr("fill", "red");
+          d.hoved = false;
+        });
+    });
+    passByEdgesId.forEach((edgeId) => {
+      console.log(`#edge-${edgeId}`);
+      d3.select(`#edge-${edgeId}`)
+        .attr("stroke", "red")
+        .on("mouseover", (event, d: any) => {
+          d3.select(event.target).attr("stroke", "#ff7777");
+          d.hoved = true;
+          console.log("Mouseover on edge:", d);
+        })
+        .on("mouseout", (event, d: any) => {
+          d.hoved = false;
+          d3.select(event.target).attr("stroke", "red");
+        });
+    });
+  }
+  public clearTrainLine(): void {
+    const nodes = this.graph.getNodes();
+    nodes.forEach((node) => {
+      d3.select(`#node-${node._id}`)
+        .attr("fill", "steelblue")
+        .on("mouseover", (event, d: any) => {
+          d3.select(event.target).attr("fill", "lightblue");
+          d.hoved = true;
+          console.log("Mouseover on node:", d);
+        }) // 设置鼠标移入节点时变色
+        .on("mouseout", (event, d: any) => {
+          d3.select(event.target).attr("fill", "steelblue");
+          d.hoved = false;
+        });
+    });
+    const edges = this.graph.getEdges();
+    edges.forEach((edge) => {
+      d3.select(`#edge-${edge._id}`)
+        .attr("stroke", "transparent")
+        .on("mouseover", (event, d: any) => {
+          d3.select(event.target).attr("stroke", "lightblue");
+          d.hoved = true;
+          console.log("Mouseover on edge:", d);
+        })
+        .on("mouseout", (event, d: any) => {
+          d.hoved = false;
+          d3.select(event.target).attr("stroke", "transparent");
+        });
+    });
   }
 }
