@@ -4,18 +4,34 @@
 
 # 项目说明：
 
-主要功能实现见 TODO 文件。
+**我们的项目全称使用面向对象编程，具有极高的可读性和拓展性**
 
-结构：
+### 项目逻辑实现简介：
 
-- 项目总管理器是 Context。其中：
-  - SidePanel 负责为三个侧边栏添加切换等逻辑。
-  - MapContext 负责地图绘制、缩放（以及交互）、投影
-  - GraphContext 负责图拓扑管理。其中：
-    - Graph 是图的抽象存储器。
-    - Simulator 是力模拟器，同时负责绘制。
-- index.html 负责页面布局，包括侧边栏、地图、图形。
-- css 文件夹存放样式文件。
-- data 文件夹存放数据文件。
+#### 参数管理：ParamsExplorer
+1. 实现参数的获取、设置、保存、加载等功能。
+2. 利用typescript的类型检查功能，实现校验功能。
+
+#### 项目总管理器：Context
+1. 包含paramsExplorer参数管理器，mapContext地图管理器，graphContext图管理器，以及侧边栏管理器。
+2. 实现三个模块的创建逻辑。
+3. 实现三个模块的更新逻辑。
+
+#### 侧边栏：SidePanel
+1. 分LeftSidePanel，RightSidePanel，TopSidePanel三个模块。
+2. 在topSidePanel模块中，实现了地图视角，距离视角和时间视角的切换。
+3. 在leftSidePanel模块中，实现了内容的切换和侧边栏宽度的调整。
+4. 在rightSidePanel模块中，实现了对侧边栏的拖拽效果。
+
+#### 地图：MapContext
+1. 实现了点击事件进行地图的缩放，以及地图的渲染。
+2. 实现了节点和连边之间的绘制。
+3. 实现了手动更改节点之间的数值，颜色等属性。
+
+#### 图形：Graph（针对力引导图）
+1. 在graphContext模块中，实现了节点距离的计算逻辑。
+2. 在CanvasEventAnalyst模块中，实现了鼠标松开，移动等逻辑。
+3. 在sitimulor模块中，**手动使用d3，实现了力学仿真的所有模拟逻辑**。
+
 
 
