@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Network Path Analysis</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+        }
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: white;
+        }
+        .node {
+            cursor: pointer;
+        }
+        .link {
+            stroke-opacity: 0.6;
+        }
+        .node text {
+            font-size: 12px;
+            fill: #333;
+        }
+        #path-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            width: 300px;
+            z-index: 1000;
+        }
+        .node-select {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .path-result {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .path-node {
+            display: inline-block;
+            padding: 4px 8px;
+            margin: 2px;
+            background: #e9ecef;
+            border-radius: 4px;
+        }
+        .path-stats {
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        button {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: none;
+            border-radius: 4px;
+            background: #4a90e2;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #357abd;
+        }
+        .highlight {
+            stroke: #ff0000 !important;
+            stroke-width: 3px !important;
+        }
+        .all-paths {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .path-option {
+            padding: 8px;
+            margin: 5px 0;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .path-option:hover {
+            background: #f0f0f0;
+        }
+        .path-option.selected {
+            border-color: #4a90e2;
+            background: #e6f0fa;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="path-panel">
+            <h3>路径分析</h3>
+            <select id="source-node" class="node-select">
+                <option value="">选择起始节点</option>
+            </select>
+            <select id="target-node" class="node-select">
+                <option value="">选择目标节点</option>
+            </select>
+            <button onclick="findAllPaths()">分析路径</button>
+            <div id="path-results" class="all-paths"></div>
+        </div>
+    </div>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script>
+        // 生成更复杂的测试数据
+        function generateEnhancedData(nodeCount = 20) {
+            const nodes = [];
+            const links = [];
+            const nodeTypes = ['router', 'switch', 'server', 'client'];
+            
+            // 生成节点
+            for (let i = 0; i < nodeCount; i++) {
+                nodes.push({
+                    id: i,
+                    name: `Node ${i}`,
+                    type: nodeTypes[Math.floor(Math.random() * nodeTypes.length)],
+                    capacity: Math.floor(Math.random() * 1000),
+                    load: Math.random(),
+                    status: Math.random() > 0.9 ? 'warning' : 'normal'
+                });
+            }
+            
+            // 生成更多的连接以确保多条路径
+            for (let i = 0; i < nodeCount; i++) {
+                const numLinks = Math.floor(Math.random() * 5) + 2; // 每个节点2-6个连接
+                for (let j = 0; j < numLinks; j++) {
+                    const target = Math.floor(Math.random() * nodeCount);
+                    if (target !== i) {
+                        links.push({
+                            source: i,
+                            target: target,
+                            bandwidth: Math.floor(Math.random() * 1000) + 100,
+                            latency: Math.random() * 100,
+                            utilization: Math.random(),
+                            status: Math.random() > 0.95 ? 'congested' : 'normal'
+                        });
+                    }
+                }
+            }
+            
+            return { nodes, links };
+        }
+
+        // 查找所有可能的路径（使用深度优先搜索）
+        function findAllPathsDFS(graph, source, target, maxPaths = 10) {
+            const paths = [];
+            const visited = new Set();
+
+            function dfs(current, path) {
+                if (paths.length >= maxPaths) return;
+                
+                if (current === target) {
+                    paths.push([...path]);
+                    return;
+                }
+
+                const neighbors = graph.links.filter(l => 
+                    (l.source.id === current || l.target.id === current)
+                );
+
+                for (const link of neighbors) {
+                    const next = link.source.id === current ? link.target.id : link.source.id;
+                    if (!visited.has(next)) {
+                        visited.add(next);
+                        path.push(next);
+                        dfs(next, path);
+                        path.pop();
+                        visited.delete(next);
+                    }
+                }
+            }
+
+            visited.add(source);
+            dfs(source, [source]);
+            return paths;
+        }
+
+        // 计算路径指标
+        function calculatePathMetrics(path, links) {
+            let totalLatency = 0;
+            let minBandwidth = Infinity;
+            let totalDistance = 0;
+            let congestionLevel = 0;
+
+            for (let i = 0; i < path.length - 1; i++) {
+                const link = links.find(l => 
+                    (l.source.id === path[i] && l.target.id === path[i + 1]) ||
+                    (l.source.id === path[i + 1] && l.target.id === path[i])
+                );
+                
+                if (link) {
+                    totalLatency += link.latency;
+                    minBandwidth = Math.min(minBandwidth, link.bandwidth);
+                    totalDistance += 1;
+                    congestionLevel += link.utilization;
+                }
+            }
+
+            return {
+                latency: totalLatency,
+                bandwidth: minBandwidth,
+                hops: totalDistance,
+                congestion: congestionLevel / totalDistance
+            };
+        }
+
+        // 显示路径选项
+        function displayPathOptions(paths, nodes, links) {
+            const resultsDiv = document.getElementById('path-results');
+            resultsDiv.innerHTML = '';
+
+            paths.forEach((path, index) => {
+                const metrics = calculatePathMetrics(path, links);
+                const pathDiv = document.createElement('div');
+                pathDiv.className = 'path-option';
+                pathDiv.onclick = () => highlightSelectedPath(path, index);
+
+                const pathNodes = path.map(id => nodes.find(n => n.id === id));
+                let html = `<strong>路径 ${index + 1}</strong><br>`;
+                html += pathNodes.map(n => n.name).join(' → ');
+                html += `<div class="path-stats">
+                    跳数: ${metrics.hops}<br>
+                    延迟: ${metrics.latency.toFixed(2)}ms<br>
+                    带宽: ${metrics.bandwidth.toFixed(2)}Mbps<br>
+                    拥塞度: ${(metrics.congestion * 100).toFixed(1)}%
+                </div>`;
+
+                pathDiv.innerHTML = html;
+                resultsDiv.appendChild(pathDiv);
+            });
+        }
+
+        // 高亮显示选中的路径
+        function highlightSelectedPath(path, pathIndex) {
+            // 重置所有路径选项的样式
+            document.querySelectorAll('.path-option').forEach(el => {
+                el.classList.remove('selected');
+            });
+            // 高亮选中的路径选项
+            document.querySelectorAll('.path-option')[pathIndex].classList.add('selected');
+
+            // 重置所有连接的样式
+            link.classed('highlight', false);
+
+            // 高亮选中路径的连接
+            for (let i = 0; i < path.length - 1; i++) {
+                link.filter(d => 
+                    (d.source.id === path[i] && d.target.id === path[i + 1]) ||
+                    (d.source.id === path[i + 1] && d.target.id === path[i])
+                ).classed('highlight', true);
+            }
+        }
+
+        // 初始化变量和创建图形
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const graphData = generateEnhancedData();
+
+        // 创建SVG和力导向图
+        const svg = d3.select("#container")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        const simulation = d3.forceSimulation()
+            .force("link", d3.forceLink().id(d => d.id).distance(100))
+            .force("charge", d3.forceManyBody().strength(-300))
+            .force("center", d3.forceCenter(width / 2, height / 2));
+
+        const link = svg.append("g")
+            .selectAll("line")
+            .data(graphData.links)
+            .enter().append("line")
+            .attr("stroke", "#999")
+            .attr("stroke-width", 1);
+
+        const node = svg.append("g")
+            .selectAll("g")
+            .data(graphData.nodes)
+            .enter().append("g")
+            .call(d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended));
+
+        node.append("circle")
+            .attr("r", 5)
+            .attr("fill", d => d.status === 'warning' ? '#ff0000' : '#1f77b4');
+
+        node.append("text")
+            .attr("dx", 12)
+            .attr("dy", ".35em")
+            .text(d => d.name);
+
+        simulation
+            .nodes(graphData.nodes)
+            .on("tick", ticked);
+
+        simulation.force("link")
+            .links(graphData.links);
+
+        // 初始化节点选择下拉框
+        function initializeNodeSelectors() {
+            const sourceSelect = document.getElementById('source-node');
+            const targetSelect = document.getElementById('target-node');
+            
+            graphData.nodes.forEach(node => {
+                const option = document.createElement('option');
+                option.value = node.id;
+                option.text = node.name;
+                sourceSelect.appendChild(option.cloneNode(true));
+                targetSelect.appendChild(option);
+            });
+        }
+
+        // 查找所有路径
+        function findAllPaths() {
+            const sourceId = parseInt(document.getElementById('source-node').value);
+            const targetId = parseInt(document.getElementById('target-node').value);
+
+            if (isNaN(sourceId) || isNaN(targetId)) {
+                alert('请选择起始和目标节点');
+                return;
+            }
+
+            const paths = findAllPathsDFS(graphData, sourceId, targetId);
+            displayPathOptions(paths, graphData.nodes, graphData.links);
+        }
+
+        // 力导向图更新函数
+        function ticked() {
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+
+            node
+                .attr("transform", d => `translate(${d.x},${d.y})`);
+        }
+
+        // 拖拽事件处理函数
+        function dragstarted(event) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            event.subject.fx = event.subject.x;
+            event.subject.fy = event.subject.y;
+        }
+
+        function dragged(event) {
+            event.subject.fx = event.x;
+            event.subject.fy = event.y;
+        }
+
+        function dragended(event) {
+            if (!event.active) simulation.alphaTarget(0);
+            event.subject.fx = null;
+            event.subject.fy = null;
+        }
+
+        // 初始化
+        initializeNodeSelectors();
+    </script>
+</body>
+</html>
