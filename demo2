@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Network Topology Visualization</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+        }
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: white;
+        }
+        .node {
+            cursor: pointer;
+        }
+        .link {
+            stroke-opacity: 0.6;
+        }
+        .node text {
+            font-size: 12px;
+            fill: #333;
+        }
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 300px;
+            z-index: 1000;
+        }
+        #analysis-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 400px;
+        }
+        button {
+            margin: 5px;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            background: #4a90e2;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #357abd;
+        }
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        .node-status {
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 4px;
+            background: #f5f5f5;
+        }
+        .status-normal {
+            color: #2ecc71;
+        }
+        .status-warning {
+            color: #e74c3c;
+        }
+        .path-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .path-node {
+            display: inline-block;
+            padding: 4px 8px;
+            margin: 2px;
+            background: #e9ecef;
+            border-radius: 4px;
+        }
+        .path-stats {
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        .highlight {
+            stroke: #ff0000 !important;
+            stroke-width: 3px !important;
+        }
+        .community-label {
+            font-size: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="controls">
+            <button onclick="findShortestPath()">计算最短路径</button>
+            <button onclick="toggleClustering()">切换社区视图</button>
+            <button onclick="resetView()">重置视图</button>
+            <button onclick="toggleSimulation()">暂停/继续</button>
+        </div>
+        <div id="info-panel">
+            <h3>网络信息</h3>
+            <div id="node-info">
+                <p>选择节点查看详情</p>
+            </div>
+            <div id="path-info"></div>
+        </div>
+        <div id="analysis-panel">
+            <h3>路径分析</h3>
+            <div id="path-details"></div>
+        </div>
+    </div>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script>  
+        // 生成测试数据  
+        function generateEnhancedData(nodeCount = 30) {  
+            const nodes = [];  
+            const links = [];  
+            const communities = ['A', 'B', 'C', 'D'];  
+            const nodeTypes = ['router', 'switch', 'server', 'client'];  
+            
+            // 生成节点  
+            for (let i = 0; i < nodeCount; i++) {  
+                nodes.push({  
+                    id: i,  
+                    name: `Node ${i}`,  
+                    value: Math.random() * 100,  
+                    community: communities[Math.floor(Math.random() * communities.length)],  
+                    type: nodeTypes[Math.floor(Math.random() * nodeTypes.length)],  
+                    traffic: Math.floor(Math.random() * 1000),  
+                    status: Math.random() > 0.9 ? 'warning' : 'normal',  
+                    load: Math.random(),  
+                    uptime: Math.floor(Math.random() * 1000),  
+                    connections: 0  
+                });  
+            }  
+            
+            // 生成边  
+            for (let i = 0; i < nodeCount; i++) {  
+                const numLinks = Math.floor(Math.random() * 4) + 1;  
+                for (let j = 0; j < numLinks; j++) {  
+                    const target = Math.floor(Math.random() * nodeCount);  
+                    if (target !== i) {  
+                        links.push({  
+                            source: i,  
+                            target: target,  
+                            weight: Math.random() * 10,  
+                            bandwidth: Math.floor(Math.random() * 1000),  
+                            latency: Math.random() * 100,  
+                            status: Math.random() > 0.95 ? 'congested' : 'normal'  
+                        });  
+                        nodes[i].connections++;  
+                        nodes[target].connections++;  
+                    }  
+                }  
+            }  
+            
+            return { nodes, links };  
+        }  
+        
+        // 初始化变量  
+        const width = window.innerWidth;  
+        const height = window.innerHeight;  
+        let selectedNodes = [];  
+        let clustering = false;  
+        let simulationActive = true;  
+        
+        // 创建SVG  
+        const svg = d3.select("#container")  
+            .append("svg")  
+            .attr("width", width)  
+            .attr("height", height);  
+        
+        // 创建缩放组  
+        const g = svg.append("g");  
+        
+        // 添加缩放功能  
+        const zoom = d3.zoom()  
+            .scaleExtent([0.1, 4])  
+            .on("zoom", (event) => {  
+                g.attr("transform", event.transform);  
+            });  
+        svg.call(zoom);  
+        
+        // 创建力导向图  
+        const simulation = d3.forceSimulation()  
+            .force("link", d3.forceLink().id(d => d.id).distance(100))  
+            .force("charge", d3.forceManyBody().strength(-300))  
+            .force("center", d3.forceCenter(width / 2, height / 2))  
+            .force("collision", d3.forceCollide().radius(30));  
+        
+        // 加载数据  
+        const graphData = generateEnhancedData();  
+        
+        // 创建箭头标记  
+        svg.append("defs").selectAll("marker")  
+            .data(["end", "end-highlighted"])  
+            .enter().append("marker")  
+            .attr("id", String)  
+            .attr("viewBox", "0 -5 10 10")  
+            .attr("refX", 25)  
+            .attr("refY", 0)  
+            .attr("markerWidth", 6)  
+            .attr("markerHeight", 6)  
+            .attr("orient", "auto")  
+            .append("path")  
+            .attr("d", "M0,-5L10,0L0,5")  
+            .attr("fill", d => d === "end" ? "#999" : "#ff0000");  
+        
+        // 创建连接线  
+        const link = g.append("g")  
+            .selectAll("line")  
+            .data(graphData.links)  
+            .enter().append("line")  
+            .attr("class", "link")  
+            .attr("stroke", d => d.status === 'congested' ? '#ff9999' : '#999')  
+            .attr("stroke-width", d => Math.sqrt(d.weight))  
+            .attr("marker-end", "url(#end)");  
+        
+        // 创建节点组  
+        const node = g.append("g")  
+            .selectAll(".node")  
+            .data(graphData.nodes)  
+            .enter().append("g")  
+            .attr("class", "node")  
+            .call(d3.drag()  
+                .on("start", dragstarted)  
+                .on("drag", dragged)  
+                .on("end", dragended));  
+        
+        // 添加节点圆圈  
+        node.append("circle")  
+            .attr("r", d => Math.sqrt(d.value) + 5)  
+            .attr("fill", d => getNodeColor(d))  
+            .attr("stroke", "#fff")  
+            .attr("stroke-width", 2);  
+        
+        // 添加节点标签  
+        node.append("text")  
+            .attr("dx", 12)  
+            .attr("dy", ".35em")  
+            .text(d => d.name);  
+        
+        // 创建提示框  
+        const tooltip = d3.select("body").append("div")  
+            .attr("class", "tooltip")  
+            .style("opacity", 0);  
+        
+        // 设置力导向图数据  
+        simulation  
+            .nodes(graphData.nodes)  
+            .on("tick", ticked);  
+        
+        simulation.force("link")  
+            .links(graphData.links);  
+        
+        // 节点事件处理  
+        node.on("mouseover", function(event, d) {  
+            tooltip.transition()  
+                .duration(200)  
+                .style("opacity", .9);  
+            tooltip.html(`  
+                名称: ${d.name}<br/>  
+                类型: ${d.type}<br/>  
+                流量: ${d.traffic} Mbps<br/>  
+                连接数: ${d.connections}<br/>  
+                状态: ${d.status}  
+            `)  
+                .style("left", (event.pageX + 10) + "px")  
+                .style("top", (event.pageY - 28) + "px");  
+        })  
+        .on("mouseout", function() {  
+            tooltip.transition()  
+                .duration(500)  
+                .style("opacity", 0);  
+        })  
+        .on("click", handleNodeClick); 
+            function getNodeColor(node) {
+                if (clustering) {
+                    const colors = {
+                        'A': '#ff7f0e',
+                        'B': '#1f77b4',
+                        'C': '#2ca02c',
+                        'D': '#d62728'
+                    };
+                    return colors[node.community];
+                }
+                return node.status === 'warning' ? '#ff0000' : '#1f77b4';
+            }
+            
+            // Dijkstra最短路径算法实现
+            function dijkstra(graph, source, target) {
+                const nodes = new Set(graph.nodes.map(n => n.id));
+                const dist = {};
+                const prev = {};
+                const Q = new Set();
+            
+                // 初始化
+                graph.nodes.forEach(node => {
+                    dist[node.id] = Infinity;
+                    prev[node.id] = null;
+                    Q.add(node.id);
+                });
+                dist[source.id] = 0;
+            
+                while (Q.size > 0) {
+                    // 找到距离最小的节点
+                    let u = null;
+                    let minDist = Infinity;
+                    for (const nodeId of Q) {
+                        if (dist[nodeId] < minDist) {
+                            minDist = dist[nodeId];
+                            u = nodeId;
+                        }
+                    }
+            
+                    if (u === target.id) break;
+                    Q.delete(u);
+            
+                    // 更新邻居节点的距离
+                    const neighbors = graph.links.filter(l => 
+                        l.source.id === u || l.target.id === u
+                    );
+            
+                    for (const link of neighbors) {
+                        const v = link.source.id === u ? link.target.id : link.source.id;
+                        if (!Q.has(v)) continue;
+            
+                        const alt = dist[u] + link.weight;
+                        if (alt < dist[v]) {
+                            dist[v] = alt;
+                            prev[v] = u;
+                        }
+                    }
+                }
+            
+                // 构建路径
+                const path = [];
+                let current = target.id;
+                while (current !== null) {
+                    path.unshift(current);
+                    current = prev[current];
+                }
+            
+                return {
+                    path: path,
+                    distance: dist[target.id]
+                };
+            }
+            
+            // 计算路径的总带宽和延迟
+            function calculatePathMetrics(path, links) {
+                let totalLatency = 0;
+                let minBandwidth = Infinity;
+            
+                for (let i = 0; i < path.length - 1; i++) {
+                    const link = links.find(l => 
+                        (l.source.id === path[i] && l.target.id === path[i + 1]) ||
+                        (l.source.id === path[i + 1] && l.target.id === path[i])
+                    );
+                    
+                    if (link) {
+                        totalLatency += link.latency;
+                        minBandwidth = Math.min(minBandwidth, link.bandwidth);
+                    }
+                }
+            
+                return {
+                    latency: totalLatency,
+                    bandwidth: minBandwidth
+                };
+            }
+            
+            // 显示路径详情
+            function displayPathDetails(pathResult, nodes, links) {
+                const pathDetails = d3.select("#path-details");
+                
+                if (pathResult.path.length < 2) {
+                    pathDetails.html("<p>请选择两个节点来计算路径</p>");
+                    return;
+                }
+            
+                const metrics = calculatePathMetrics(pathResult.path, links);
+                const pathNodes = pathResult.path.map(id => 
+                    nodes.find(n => n.id === id)
+                );
+            
+                let html = '<div class="path-info">';
+                html += '<div>路径: ';
+                pathNodes.forEach((node, i) => {
+                    html += `<span class="path-node">${node.name}</span>`;
+                    if (i < pathNodes.length - 1) html += ' → ';
+                });
+                html += '</div>';
+                html += '<div class="path-stats">';
+                html += `<p>跳数: ${pathResult.path.length - 1}</p>`;
+                html += `<p>总延迟: ${metrics.latency.toFixed(2)} ms</p>`;
+                html += `<p>可用带宽: ${metrics.bandwidth.toFixed(2)} Mbps</p>`;
+                html += '</div></div>';
+            
+                pathDetails.html(html);
+            }
+            
+            // 高亮显示路径
+            function highlightPath(pathResult, links) {
+                // 重置所有连接的样式
+                links.forEach(link => {
+                    link.highlighted = false;
+                });
+            
+                // 标记路径上的连接
+                for (let i = 0; i < pathResult.path.length - 1; i++) {
+                    const pathLink = links.find(l => 
+                        (l.source.id === pathResult.path[i] && l.target.id === pathResult.path[i + 1]) ||
+                        (l.source.id === pathResult.path[i + 1] && l.target.id === pathResult.path[i])
+                    );
+                    if (pathLink) {
+                        pathLink.highlighted = true;
+                    }
+                }
+            
+                // 更新连接的视觉样式
+                d3.selectAll(".link")
+                    .classed("highlight", d => d.highlighted);
+            }
+            
+            // 节点点击处理
+            function handleNodeClick(event, d) {
+                if (selectedNodes.length < 2) {
+                    if (!selectedNodes.includes(d)) {
+                        selectedNodes.push(d);
+                        d3.select(this).select("circle")
+                            .attr("stroke", "#ff0000")
+                            .attr("stroke-width", 3);
+                    }
+                }
+                updateNodeInfo(d);
+                if (selectedNodes.length === 2) {
+                    findShortestPath();
+                }
+            }
+            
+            // 更新节点信息面板
+            function updateNodeInfo(node) {
+                const info = d3.select("#node-info");
+                info.html(`
+                    <h4>${node.name}</h4>
+                    <div class="node-status ${node.status === 'normal' ? 'status-normal' : 'status-warning'}">
+                        状态: ${node.status}
+                    </div>
+                    <p>类型: ${node.type}</p>
+                    <p>社区: ${node.community}</p>
+                    <p>流量: ${node.traffic} Mbps</p>
+                    <p>负载: ${(node.load * 100).toFixed(1)}%</p>
+                    <p>运行时间: ${node.uptime}h</p>
+                    <p>连接数: ${node.connections}</p>
+                `);
+            }
+            
+            // 计算最短路径
+            function findShortestPath() {
+                if (selectedNodes.length !== 2) {
+                    alert("请选择两个节点来计算最短路径");
+                    return;
+                }
+            
+                const pathResult = dijkstra(graphData, selectedNodes[0], selectedNodes[1]);
+                displayPathDetails(pathResult, graphData.nodes, graphData.links);
+                highlightPath(pathResult, graphData.links);
+            }
+            
+            // 切换聚类显示
+            function toggleClustering() {
+                clustering = !clustering;
+                node.select("circle")
+                    .transition()
+                    .duration(500)
+                    .attr("fill", d => getNodeColor(d));
+            }
+            
+            // 重置视图
+            function resetView() {
+                selectedNodes = [];
+                node.select("circle")
+                    .attr("stroke", "#fff")
+                    .attr("stroke-width", 2);
+                link
+                    .attr("stroke", d => d.status === 'congested' ? '#ff9999' : '#999')
+                    .attr("stroke-width", d => Math.sqrt(d.weight))
+                    .attr("marker-end", "url(#end)");
+                d3.select("#path-info").html("");
+                d3.select("#path-details").html("");
+                svg.transition()
+                    .duration(750)
+                    .call(zoom.transform, d3.zoomIdentity);
+            }
+            
+            // 切换模拟状态
+            function toggleSimulation() {
+                simulationActive = !simulationActive;
+                if (simulationActive) {
+                    simulation.restart();
+                } else {
+                    simulation.stop();
+                }
+            }
+            
+            // 力导向图更新函数
+            function ticked() {
+                link
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+            
+                node
+                    .attr("transform", d => `translate(${d.x},${d.y})`);
+            }
+            
+            // 拖拽事件处理函数
+            function dragstarted(event) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                event.subject.fx = event.subject.x;
+                event.subject.fy = event.subject.y;
+            }
+            
+            function dragged(event) {
+                event.subject.fx = event.x;
+                event.subject.fy = event.y;
+            }
+            
+            function dragended(event) {
+                if (!event.active) simulation.alphaTarget(0);
+                event.subject.fx = null;
+                event.subject.fy = null;
+            }
+            </script>
+</body>
+</html>
