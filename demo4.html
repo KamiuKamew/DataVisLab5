@@ -1,0 +1,768 @@
+<!DOCTYPE html>  
+<html lang="zh-CN">  
+<head>  
+    <meta charset="UTF-8">  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">  
+    <title>智慧铁路数据可视化平台</title>  
+    <script src="https://d3js.org/d3.v7.min.js"></script>  
+    <style>  
+        :root {  
+            --bg-primary: #0f172a;  
+            --bg-secondary: #1e293b;  
+            --accent-primary: #3b82f6;  
+            --accent-secondary: #22d3ee;  
+            --text-primary: #f8fafc;  
+            --text-secondary: #94a3b8;  
+            --success: #22c55e;  
+            --warning: #f59e0b;  
+            --error: #ef4444;  
+            --grid: rgba(255, 255, 255, 0.05);  
+        }  
+
+        * {  
+            margin: 0;  
+            padding: 0;  
+            box-sizing: border-box;  
+        }  
+
+        body {  
+            background-color: var(--bg-primary);  
+            color: var(--text-primary);  
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;  
+            min-height: 100vh;  
+            overflow-x: hidden;  
+        }  
+
+        .container {  
+            max-width: 1440px;  
+            margin: 0 auto;  
+            padding: 2rem;  
+        }  
+
+        .header {  
+            display: flex;  
+            justify-content: space-between;  
+            align-items: center;  
+            margin-bottom: 2rem;  
+        }  
+
+        .title {  
+            font-size: 1.5rem;  
+            font-weight: 600;  
+            color: var(--accent-secondary);  
+        }  
+
+        .controls {  
+            display: flex;  
+            gap: 1rem;  
+        }  
+
+        .btn {  
+            background: var(--bg-secondary);  
+            border: 1px solid var(--accent-primary);  
+            color: var(--accent-primary);  
+            padding: 0.5rem 1rem;  
+            border-radius: 0.5rem;  
+            cursor: pointer;  
+            transition: all 0.2s;  
+        }  
+
+        .btn:hover {  
+            background: var(--accent-primary);  
+            color: var(--text-primary);  
+        }  
+
+        .dashboard {  
+            display: grid;  
+            grid-template-columns: repeat(3, 1fr);  
+            gap: 1rem;  
+            margin-bottom: 2rem;  
+        }  
+
+        .metric-card {  
+            background: var(--bg-secondary);  
+            padding: 1.5rem;  
+            border-radius: 1rem;  
+            display: flex;  
+            flex-direction: column;  
+            gap: 0.5rem;  
+        }  
+
+        .metric-title {  
+            font-size: 0.875rem;  
+            color: var(--text-secondary);  
+        }  
+
+        .metric-value {  
+            font-size: 2rem;  
+            font-weight: 600;  
+            color: var(--accent-secondary);  
+        }  
+
+        .chart-container {  
+            background: var(--bg-secondary);  
+            border-radius: 1rem;  
+            padding: 1.5rem;  
+            margin-bottom: 1rem;  
+        }  
+
+        .tooltip {  
+            position: absolute;  
+            background: rgba(0, 0, 0, 0.8);  
+            color: white;  
+            padding: 0.5rem;  
+            border-radius: 0.25rem;  
+            font-size: 0.875rem;  
+            pointer-events: none;  
+            opacity: 0;  
+            transition: opacity 0.2s;  
+        }  
+
+        .time-axis text {  
+            fill: var(--text-secondary);  
+            font-size: 0.75rem;  
+        }  
+
+        .time-axis line {  
+            stroke: var(--grid);  
+        }  
+
+        .time-axis path {  
+            stroke: none;  
+        }  
+
+        .train-path {  
+            fill: none;  
+            stroke: var(--accent-primary);  
+            stroke-width: 2;  
+            stroke-linecap: round;  
+            stroke-linejoin: round;  
+            opacity: 0.7;  
+            transition: opacity 0.2s;  
+        }  
+
+        .train-path:hover {  
+            opacity: 1;  
+            stroke: var(--accent-secondary);  
+        }  
+
+        .station-label {  
+            fill: var(--text-secondary);  
+            font-size: 0.75rem;  
+            text-anchor: end;  
+        }  
+
+        .passenger-flow {  
+            fill: var(--accent-primary);  
+            opacity: 0.2;  
+        }  
+
+        .passenger-flow:hover {  
+            opacity: 0.4;  
+        }  
+
+        .time-selector {  
+            position: relative;  
+            height: 60px;  
+            margin-top: 1rem;  
+        }  
+
+        .time-brush .selection {  
+            fill: var(--accent-primary);  
+            fill-opacity: 0.2;  
+            stroke: var(--accent-primary);  
+        }  
+    </style>  
+</head>  
+<body>  
+    <div class="container">  
+        <header class="header">  
+            <h1 class="title">智慧铁路数据可视化平台</h1>  
+            <div class="controls">  
+                <button class="btn" id="toggleTime">实时/历史</button>  
+                <button class="btn" id="toggleView">切换视图</button>  
+            </div>  
+        </header>  
+
+        <div class="dashboard">  
+            <div class="metric-card">  
+                <div class="metric-title">当前运行列车</div>  
+                <div class="metric-value" id="activeTrains">0</div>  
+            </div>  
+            <div class="metric-card">  
+                <div class="metric-title">今日客运量</div>  
+                <div class="metric-value" id="dailyPassengers">0</div>  
+            </div>  
+            <div class="metric-card">  
+                <div class="metric-title">准点率</div>  
+                <div class="metric-value" id="punctuality">0%</div>  
+            </div>  
+        </div>  
+
+        <div class="chart-container" id="timeCircle"></div>  
+        <div class="chart-container" id="flowChart"></div>  
+        <div class="chart-container" id="trainPaths"></div>  
+        <div class="time-selector" id="timeSelector"></div>  
+    </div>  
+
+    <div class="tooltip"></div>  
+
+    <script>  
+    // 生成模拟数据  
+    const generateData = () => {  
+        const stations = [  
+            "北京南", "天津南", "济南西", "南京南", "上海虹桥",  
+            "杭州东", "福州南", "厦门北", "广州南", "深圳北"  
+        ];  
+
+        const trains = [];  
+        const now = new Date();  
+        const startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate());  
+
+        // 生成列车数据  
+        for (let i = 0; i < 50; i++) {  
+            const startStation = stations[Math.floor(Math.random() * (stations.length - 1))];  
+            const endStation = stations[Math.floor(Math.random() * stations.length)];  
+            
+            if (startStation === endStation) continue;  
+
+            const startHour = Math.floor(Math.random() * 24);  
+            const duration = Math.floor(Math.random() * 5 + 2); // 2-7小时行程  
+
+            trains.push({  
+                id: `G${1000 + i}`,  
+                startStation,  
+                endStation,  
+                startTime: new Date(startTime.getTime() + startHour * 3600000),  
+                duration: duration * 3600000, // 转换为毫秒  
+                status: Math.random() > 0.1 ? 'on-time' : 'delayed',  
+                delay: Math.random() > 0.1 ? 0 : Math.floor(Math.random() * 30),  
+                passengers: Math.floor(Math.random() * 500 + 300)  
+            });  
+        }  
+
+        // 生成站点客流量数据  
+        const passengerFlow = stations.map(station => {  
+            const hourlyData = Array.from({length: 24}, (_, hour) => {  
+                const baseFlow = Math.random() * 1000 + 500;  
+                const peakMultiplier = (hour >= 7 && hour <= 9) || (hour >= 17 && hour <= 19)  
+                    ? 2.5  
+                    : 1;  
+                
+                return {  
+                    station,  
+                    hour,  
+                    inFlow: Math.floor(baseFlow * peakMultiplier * (1 + Math.random() * 0.2)),  
+                    outFlow: Math.floor(baseFlow * peakMultiplier * (1 + Math.random() * 0.2))  
+                };  
+            });  
+
+            return {  
+                station,  
+                hourlyData  
+            };  
+        });  
+
+        return {  
+            trains,  
+            passengerFlow,  
+            stations  
+        };  
+    };  
+
+    // 初始化数据  
+    const data = generateData();
+        // 创建SVG工具函数  
+        const createSVG = (container, width, height, margin = {top: 20, right: 20, bottom: 20, left: 20}) => {  
+        const svg = d3.select(container)  
+            .append('svg')  
+            .attr('width', width)  
+            .attr('height', height);  
+        
+        return svg.append('g')  
+            .attr('transform', `translate(${margin.left},${margin.top})`);  
+    };  
+
+    // 环形时刻表实现  
+    class CircularTimeTable {  
+        constructor(container, data) {  
+            this.container = container;  
+            this.data = data;  
+            this.width = 800;  
+            this.height = 800;  
+            this.margin = {top: 50, right: 50, bottom: 50, left: 50};  
+            this.radius = Math.min(this.width, this.height) / 2 - 100;  
+            
+            this.init();  
+        }  
+
+        init() {  
+            const svg = d3.select(this.container)  
+                .append('svg')  
+                .attr('width', this.width)  
+                .attr('height', this.height)  
+                .append('g')  
+                .attr('transform', `translate(${this.width/2},${this.height/2})`);  
+
+            // 创建24小时刻度  
+            this.createHourScale(svg);  
+            // 创建站点环  
+            this.createStationRings(svg);  
+            // 创建列车运行路径  
+            this.createTrainPaths(svg);  
+            // 添加交互  
+            this.addInteractions(svg);  
+        }  
+
+        createHourScale(svg) {  
+            // 创建24小时刻度圈  
+            const hours = Array.from({length: 24}, (_, i) => i);  
+            
+            // 时间刻度线  
+            svg.selectAll('.hour-tick')  
+                .data(hours)  
+                .join('line')  
+                .attr('class', 'hour-tick')  
+                .attr('x1', 0)  
+                .attr('y1', -this.radius - 10)  
+                .attr('x2', 0)  
+                .attr('y2', -this.radius + 10)  
+                .attr('transform', d => `rotate(${d * 15})`)  
+                .style('stroke', 'var(--text-secondary)');  
+
+            // 时间文字  
+            svg.selectAll('.hour-label')  
+                .data(hours)  
+                .join('text')  
+                .attr('class', 'hour-label')  
+                .attr('x', d => (this.radius + 30) * Math.sin(d * Math.PI / 12))  
+                .attr('y', d => -(this.radius + 30) * Math.cos(d * Math.PI / 12))  
+                .text(d => d.toString().padStart(2, '0') + ':00')  
+                .attr('text-anchor', 'middle')  
+                .attr('dominant-baseline', 'middle')  
+                .style('fill', 'var(--text-secondary)')  
+                .style('font-size', '12px');  
+        }  
+
+        createStationRings(svg) {  
+            const stationScale = d3.scalePoint()  
+                .domain(this.data.stations)  
+                .range([0, 2 * Math.PI]);  
+
+            // 创建站点连接线  
+            svg.selectAll('.station-line')  
+                .data(this.data.stations)  
+                .join('path')  
+                .attr('class', 'station-line')  
+                .attr('d', d => {  
+                    const angle = stationScale(d);  
+                    return d3.arc()({  
+                        innerRadius: this.radius * 0.4,  
+                        outerRadius: this.radius * 0.8,  
+                        startAngle: angle,  
+                        endAngle: angle  
+                    });  
+                })  
+                .style('stroke', 'var(--grid)')  
+                .style('fill', 'none');  
+
+            // 创建站点标签  
+            svg.selectAll('.station-label')  
+                .data(this.data.stations)  
+                .join('text')  
+                .attr('class', 'station-label')  
+                .attr('x', d => (this.radius * 0.35) * Math.sin(stationScale(d)))  
+                .attr('y', d => -(this.radius * 0.35) * Math.cos(stationScale(d)))  
+                .text(d => d)  
+                .attr('text-anchor', 'middle')  
+                .attr('dominant-baseline', 'middle')  
+                .style('fill', 'var(--text-primary)')  
+                .style('font-size', '14px');  
+        }  
+
+        createTrainPaths(svg) {  
+            const timeScale = d3.scaleLinear()  
+                .domain([0, 24])  
+                .range([0, 2 * Math.PI]);  
+
+            const stationScale = d3.scalePoint()  
+                .domain(this.data.stations)  
+                .range([0, 2 * Math.PI]);  
+
+            // 创建列车运行路径  
+            this.data.trains.forEach(train => {  
+                const startHour = train.startTime.getHours() + train.startTime.getMinutes() / 60;  
+                const endHour = (startHour + train.duration / 3600000) % 24;  
+                
+                const startAngle = timeScale(startHour);  
+                const endAngle = timeScale(endHour);  
+                const startRadius = this.radius * 0.6;  
+                const endRadius = this.radius * 0.6;  
+
+                const path = d3.path();  
+                path.arc(0, 0, startRadius, startAngle, endAngle);  
+
+                svg.append('path')  
+                    .attr('class', 'train-path')  
+                    .attr('d', path.toString())  
+                    .style('stroke', train.status === 'delayed' ? 'var(--warning)' : 'var(--accent-primary)')  
+                    .style('stroke-width', 2)  
+                    .style('fill', 'none')  
+                    .on('mouseover', (event) => {  
+                        this.showTrainInfo(event, train);  
+                    })  
+                    .on('mouseout', () => {  
+                        this.hideTrainInfo();  
+                    });  
+            });  
+        }  
+
+        showTrainInfo(event, train) {  
+            const tooltip = d3.select('.tooltip');  
+            tooltip.style('opacity', 1)  
+                .html(`  
+                    <div style="padding: 8px">  
+                        <div style="font-weight: bold">${train.id}</div>  
+                        <div>${train.startStation} → ${train.endStation}</div>  
+                        <div>发车: ${train.startTime.toLocaleTimeString()}</div>  
+                        <div>状态: ${train.status === 'delayed' ? '晚点' + train.delay + '分钟' : '准点'}</div>  
+                        <div>载客: ${train.passengers}人</div>  
+                    </div>  
+                `)  
+                .style('left', (event.pageX + 10) + 'px')  
+                .style('top', (event.pageY + 10) + 'px');  
+        }  
+
+        hideTrainInfo() {  
+            d3.select('.tooltip').style('opacity', 0);  
+        }  
+
+        addInteractions(svg) {  
+            // 添加时间指针  
+            const now = new Date();  
+            const currentHour = now.getHours() + now.getMinutes() / 60;  
+            const angle = (currentHour / 24) * 2 * Math.PI;  
+
+            const pointer = svg.append('line')  
+                .attr('class', 'time-pointer')  
+                .attr('x1', 0)  
+                .attr('y1', 0)  
+                .attr('x2', 0)  
+                .attr('y2', -this.radius)  
+                .attr('transform', `rotate(${angle * 180 / Math.PI})`)  
+                .style('stroke', 'var(--accent-secondary)')  
+                .style('stroke-width', 2);  
+
+            // 添加动画  
+            function rotatePointer() {  
+                const now = new Date();  
+                const currentHour = now.getHours() + now.getMinutes() / 60;  
+                const angle = (currentHour / 24) * 360;  
+
+                pointer.transition()  
+                    .duration(60000) // 1分钟更新一次  
+                    .ease(d3.easeLinear)  
+                    .attr('transform', `rotate(${angle})`);  
+            }  
+
+            rotatePointer();  
+            setInterval(rotatePointer, 60000);  
+        }  
+    }  
+
+    // 客流量瀑布图实现  
+    class PassengerFlowChart {  
+        constructor(container, data) {  
+            this.container = container;  
+            this.data = data;  
+            this.width = 1000;  
+            this.height = 400;  
+            this.margin = {top: 40, right: 40, bottom: 40, left: 100};  
+            
+            this.init();  
+        }  
+
+        init() {  
+            const svg = createSVG(  
+                this.container,   
+                this.width,   
+                this.height,   
+                this.margin  
+            );  
+
+            // 处理数据  
+            const processedData = this.processData();  
+            
+            // 创建比例尺  
+            const scales = this.createScales(processedData);  
+            
+            // 绘制坐标轴  
+            this.drawAxes(svg, scales);  
+            
+            // 绘制流量图  
+            this.drawFlows(svg, processedData, scales);  
+            
+            // 添加交互  
+            this.addInteractions(svg, scales);  
+        }  
+
+        processData() {  
+            // 将站点客流量数据处理成适合绘图的格式  
+            return this.data.passengerFlow.map(station => {  
+                return station.hourlyData.map(d => ({  
+                    station: station.station,  
+                    hour: d.hour,  
+                    inFlow: d.inFlow,  
+                    outFlow: d.outFlow,  
+                    total: d.inFlow + d.outFlow  
+                }));  
+            }).flat();  
+        }
+        createScales(data) {  
+            const xScale = d3.scaleLinear()  
+                .domain([0, 23])  
+                .range([0, this.width - this.margin.left - this.margin.right]);  
+
+            const yScale = d3.scalePoint()  
+                .domain(this.data.stations)  
+                .range([0, this.height - this.margin.top - this.margin.bottom])  
+                .padding(0.5);  
+
+            const flowScale = d3.scaleLinear()  
+                .domain([0, d3.max(data, d => d.total)])  
+                .range([0, 50]);  
+
+            const colorScale = d3.scaleSequential()  
+                .domain([0, d3.max(data, d => d.total)])  
+                .interpolator(d3.interpolateBlues);  
+
+            return { xScale, yScale, flowScale, colorScale };  
+        }  
+
+        drawAxes(svg, scales) {  
+            // X轴（小时）  
+            const xAxis = d3.axisBottom(scales.xScale)  
+                .ticks(24)  
+                .tickFormat(d => d.toString().padStart(2, '0') + ':00');  
+
+            svg.append('g')  
+                .attr('class', 'x-axis')  
+                .attr('transform', `translate(0,${this.height - this.margin.top - this.margin.bottom})`)  
+                .call(xAxis)  
+                .style('color', 'var(--text-secondary)');  
+
+            // Y轴（站点）  
+            const yAxis = d3.axisLeft(scales.yScale);  
+
+            svg.append('g')  
+                .attr('class', 'y-axis')  
+                .call(yAxis)  
+                .style('color', 'var(--text-secondary)');  
+        }  
+
+        drawFlows(svg, data, scales) {  
+            // 创建渐变  
+            const gradient = svg.append('defs')  
+                .append('linearGradient')  
+                .attr('id', 'flow-gradient')  
+                .attr('x1', '0%')  
+                .attr('y1', '0%')  
+                .attr('x2', '100%')  
+                .attr('y2', '0%');  
+
+            gradient.append('stop')  
+                .attr('offset', '0%')  
+                .attr('stop-color', 'var(--accent-primary)')  
+                .attr('stop-opacity', 0.2);  
+
+            gradient.append('stop')  
+                .attr('offset', '100%')  
+                .attr('stop-color', 'var(--accent-primary)')  
+                .attr('stop-opacity', 0.8);  
+
+            // 绘制流量区域  
+            this.data.stations.forEach(station => {  
+                const stationData = data.filter(d => d.station === station);  
+                
+                const area = d3.area()  
+                    .x(d => scales.xScale(d.hour))  
+                    .y0(d => scales.yScale(station) - scales.flowScale(d.inFlow))  
+                    .y1(d => scales.yScale(station) + scales.flowScale(d.outFlow))  
+                    .curve(d3.curveCatmullRom);  
+
+                svg.append('path')  
+                    .datum(stationData)  
+                    .attr('class', 'flow-area')  
+                    .attr('d', area)  
+                    .style('fill', 'url(#flow-gradient)')  
+                    .style('opacity', 0.7)  
+                    .on('mouseover', (event, d) => {  
+                        this.showFlowInfo(event, d[0]);  
+                        d3.select(event.currentTarget)  
+                            .style('opacity', 1);  
+                    })  
+                    .on('mouseout', (event) => {  
+                        this.hideFlowInfo();  
+                        d3.select(event.currentTarget)  
+                            .style('opacity', 0.7);  
+                    });  
+            });  
+        }  
+
+        showFlowInfo(event, data) {  
+            const tooltip = d3.select('.tooltip');  
+            tooltip.style('opacity', 1)  
+                .html(`  
+                    <div style="padding: 8px">  
+                        <div style="font-weight: bold">${data.station}</div>  
+                        <div>时间: ${data.hour}:00</div>  
+                        <div>进站: ${data.inFlow}人</div>  
+                        <div>出站: ${data.outFlow}人</div>  
+                        <div>总流量: ${data.total}人</div>  
+                    </div>  
+                `)  
+                .style('left', (event.pageX + 10) + 'px')  
+                .style('top', (event.pageY + 10) + 'px');  
+        }  
+
+        hideFlowInfo() {  
+            d3.select('.tooltip').style('opacity', 0);  
+        }  
+
+        addInteractions(svg, scales) {  
+            // 添加时间指示器  
+            const timeIndicator = svg.append('line')  
+                .attr('class', 'time-indicator')  
+                .attr('y1', 0)  
+                .attr('y2', this.height - this.margin.top - this.margin.bottom)  
+                .style('stroke', 'var(--accent-secondary)')  
+                .style('stroke-width', 2)  
+                .style('stroke-dasharray', '4,4')  
+                .style('opacity', 0);  
+
+            // 鼠标移动时更新时间指示器  
+            svg.on('mousemove', (event) => {  
+                const [x] = d3.pointer(event);  
+                const hour = Math.floor(scales.xScale.invert(x));  
+                
+                if (hour >= 0 && hour <= 23) {  
+                    timeIndicator  
+                        .attr('x1', scales.xScale(hour))  
+                        .attr('x2', scales.xScale(hour))  
+                        .style('opacity', 1);  
+
+                    // 更新所有站点该时间点的数据显示  
+                    this.updateAllStationsInfo(hour);  
+                }  
+            });  
+
+            svg.on('mouseleave', () => {  
+                timeIndicator.style('opacity', 0);  
+                this.hideFlowInfo();  
+            });  
+        }  
+
+        updateAllStationsInfo(hour) {  
+            const stationData = this.data.stations.map(station => {  
+                const hourData = this.data.passengerFlow  
+                    .find(d => d.station === station)  
+                    .hourlyData[hour];  
+                return {  
+                    station,  
+                    ...hourData  
+                };  
+            });  
+
+            // 更新仪表板数据  
+            const totalPassengers = stationData.reduce((sum, d) => sum + d.inFlow + d.outFlow, 0);  
+            d3.select('#hourlyPassengers').text(totalPassengers.toLocaleString());  
+        }  
+    }  
+
+    // 实时运营指标更新  
+    class OperationMetrics {  
+        constructor(data) {  
+            this.data = data;  
+            this.updateInterval = 5000; // 5秒更新一次  
+            this.init();  
+        }  
+
+        init() {  
+            this.updateMetrics();  
+            setInterval(() => this.updateMetrics(), this.updateInterval);  
+        }  
+
+        updateMetrics() {  
+            // 计算当前运行列车数  
+            const now = new Date();  
+            const activeTrains = this.data.trains.filter(train => {  
+                const startTime = train.startTime.getTime();  
+                const endTime = startTime + train.duration;  
+                return now.getTime() >= startTime && now.getTime() <= endTime;  
+            });  
+
+            // 更新指标显示  
+            d3.select('#activeTrains')  
+                .text(activeTrains.length);  
+
+            // 计算今日客运量  
+            const dailyPassengers = this.data.trains.reduce((sum, train) => {  
+                return sum + train.passengers;  
+            }, 0);  
+
+            d3.select('#dailyPassengers')  
+                .text(dailyPassengers.toLocaleString());  
+
+            // 计算准点率  
+            const onTimeTrains = this.data.trains.filter(train => train.status === 'on-time');  
+            const punctualityRate = (onTimeTrains.length / this.data.trains.length * 100).toFixed(1);  
+
+            d3.select('#punctuality')  
+                .text(punctualityRate + '%')  
+                .style('color', punctualityRate >= 90 ? 'var(--success)' : 'var(--warning)');  
+        }  
+    }  
+
+    // 初始化应用  
+    function initializeApp() {  
+        // 创建环形时刻表  
+        const timeTable = new CircularTimeTable('#timeCircle', data);  
+        
+        // 创建客流量图表  
+        const flowChart = new PassengerFlowChart('#flowChart', data);  
+        
+        // 初始化运营指标  
+        const metrics = new OperationMetrics(data);  
+
+        // 添加视图切换功能  
+        d3.select('#toggleView').on('click', () => {  
+            // 在不同视图之间切换  
+            const containers = d3.selectAll('.chart-container');  
+            containers.style('display', function() {  
+                return d3.select(this).style('display') === 'none' ? 'block' : 'none';  
+            });  
+        });  
+
+        // 添加实时/历史切换功能  
+        let isRealtime = true;  
+        d3.select('#toggleTime').on('click', function() {  
+            isRealtime = !isRealtime;  
+            d3.select(this).text(isRealtime ? '实时/历史' : '返回实时');  
+            
+            // 根据模式更新数据和视图  
+            if (!isRealtime) {  
+                // 切换到历史数据视图  
+                const historicalData = generateHistoricalData();  
+                flowChart.updateData(historicalData);  
+            } else {  
+                // 返回实时数据视图  
+                flowChart.updateData(data);  
+            }  
+        });  
+    }  
+
+    // 启动应用  
+    initializeApp();  
+</script>  
+</body>  
+</html>
