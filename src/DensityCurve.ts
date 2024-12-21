@@ -89,9 +89,16 @@ export class DensityCurve {
       for (const target in this.shortestPath.shortestPathTable[source]) {
         if (source === target) continue;
         const params = this.shortestPath.shortestPathTable[source][target].params;
+
         if (paramId >= 0 && paramId < params.length) {
-          const param = params[paramId].param;
-          if (param !== Infinity) result.push(params[paramId].param);
+          const param = params[paramId]?.param; // 使用可选链确保 param 存在
+          if (
+            typeof param === "number" && // 确保是数值
+            !isNaN(param) && // 排除 NaN
+            param !== Infinity // 排除 Infinity
+          ) {
+            result.push(param);
+          }
         }
       }
     }

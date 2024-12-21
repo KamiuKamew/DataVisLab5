@@ -17,7 +17,8 @@ export type AdjacencyTable = {
       id: string;
       name: string;
 
-      params?: [number, number, number]; // duration_minute, distance_km, _
+      trainShifts: number; // 车次数量
+      params: [number, number, number]; // duration_minute, distance_km, _
     };
   };
 };
@@ -36,7 +37,8 @@ export class Data {
   async load(
     AccessInfoURL: string = "./data/FilteredAccessInfo.json",
     GeoInfoURL: string = "./data/FilteredStationGeo.json",
-    AdjacencyTableURL: string = "./data/FilteredAdjacencyInfo.json"
+    AdjacencyTableURL: string = "./data/FilteredAdjacencyInfo.json",
+    TrainInfoURL: string = "./data/FilteredTrainInfo.json"
   ): Promise<void> {
     await Promise.all([
       d3.json(AccessInfoURL).then((data: any) => {
@@ -72,11 +74,33 @@ export class Data {
                     id: name,
                     name: name,
 
+                    trainShifts: 0,
                     params: [duration_minute, distance_km, _],
                   };
                 }
               }
             );
+          }
+        });
+      }),
+      d3.json(TrainInfoURL).then((data_2: any) => {
+        Object.entries(data_2).forEach(([source_name, targets]: [string, any]) => {
+          if (this._adjacencyTable[source_name]) {
+            Object.entries(targets).forEach(([target_name, trainShifts]: [string, any]) => {
+              if (
+                source_name !== target_name &&
+                this._adjacencyTable[target_name][source_name] === undefined
+              ) {
+                const name = Graph.getEdgeId(source_name, target_name);
+                this._adjacencyTable[source_name][target_name] = {
+                  id: name,
+                  name: name,
+
+                  trainShifts: trainShifts,
+                  params: [0, 0, 0],
+                };
+              }
+            });
           }
         });
       }),

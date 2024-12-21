@@ -111,7 +111,7 @@ export class MapContext {
       .attr("stroke-width", 1 / transform.k); // 这里的 5 是节点的默认半径
 
     // 调整线的粗细
-    this.gLines.selectAll("path").attr("stroke-width", 2 / transform.k);
+    this.gLines.selectAll("path").attr("stroke-width", this.lineWidthEncoder(transform));
   }
 
   public renderMap(): void {
@@ -188,7 +188,7 @@ export class MapContext {
       .attr("cx", (d: any) => this.projection(d[1]["geo_info"])![0]) // x 坐标
       .attr("cy", (d: any) => this.projection(d[1]["geo_info"])![1]) // y 坐标
       .attr("r", 5 / transform.k) // 设置圆的半径
-      .attr("fill", "red") // 设置圆的填充颜色
+      .attr("fill", this.nodeColorEncoder()) // 设置圆的填充颜色
       .attr("stroke", "white") // 设置圆的边框颜色
       .attr("stroke-width", 1 / transform.k)
       // .attr(Names.DataCategory, Names.DataCategory_Station)
@@ -211,7 +211,12 @@ export class MapContext {
     const adjacencyTable = this.ctx.data.adjacencyTable();
 
     // 遍历邻接表并根据地理信息绘制线路
-    const lines: { id: string; source: [number, number]; target: [number, number] }[] = [];
+    const lines: {
+      id: string;
+      trainShifts: number;
+      source: [number, number];
+      target: [number, number];
+    }[] = [];
 
     Object.entries(adjacencyTable).forEach(([source_name, targets]) => {
       const sourceGeo = nodes[source_name]?.geo_info;
@@ -222,6 +227,7 @@ export class MapContext {
             // 如果目标站点有地理信息，则绘制一条连接线路
             lines.push({
               id: Graph.getEdgeId(source_name, target_name),
+              trainShifts: edge.trainShifts,
               source: sourceGeo,
               target: targetGeo,
             });
@@ -246,8 +252,8 @@ export class MapContext {
       .append("path")
       .attr("class", "train-line")
       .attr("d", (d: any) => lineGenerator([d.source, d.target]))
-      .attr("stroke", (d: any, i: any) => colorScale(i)) // 线路颜色
-      .attr("stroke-width", 2 / transform.k)
+      .attr("stroke", this.lineColorEncoder()) // 线路颜色
+      .attr("stroke-width", this.lineWidthEncoder(transform))
       .attr("fill", "none")
       .attr("opacity", 0.7)
       .attr(Names.DataCategory, Names.DataCategory_Track)
@@ -260,6 +266,36 @@ export class MapContext {
         console.log("[MapContext] clicked line: ", d);
         this.ctx.exploreParams(Names.DataCategory_Track, d["id"]);
       });
+  }
+
+  nodeColorEncoder(): (d: any, i: any) => string {
+    // 定义一个颜色比例尺
+    const colorScale = d3
+      .scaleLinear<string>()
+      .domain([10000, 15000, 25000]) // 假设节点的数量在 0 到 100 之间
+      .range(["green", "white", "red"]);
+
+    return (d: any) => {
+      // 根据节点数量返回相应的颜色
+      return colorScale(d[1]["access_info"]);
+    };
+  }
+
+  lineWidthEncoder(transform: d3.ZoomTransform): (d: any) => number {
+    return (d: any) => (d.trainShifts * 0.15) / transform.k + 1.5;
+  }
+
+  lineColorEncoder(): (d: any, i: any) => string {
+    // 定义一个颜色比例尺
+    const colorScale = d3
+      .scaleLinear<string>()
+      .domain([0, 30, 100]) // 假设 trainShifts 的值在 0 到 100 之间
+      .range(["green", "white", "red"]);
+
+    return (d: any) => {
+      // 根据 trainShifts 返回相应的颜色
+      return colorScale(d.trainShifts);
+    };
   }
 
   public init(): void {
