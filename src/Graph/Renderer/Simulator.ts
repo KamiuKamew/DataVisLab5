@@ -46,11 +46,12 @@ export class ForceSimulator {
           .forceLink<Node, Edge>(edges)
           .id((d) => d._id)
           .distance((d) => d.length / 2) // 使用edge的属性length作为边的长度
+          .strength(0.005) // 边的力度
       )
-      .force("charge", d3.forceManyBody().strength(-50))
-      .force("x", d3.forceX(this.width / 2).strength(0.05))
-      .force("y", d3.forceY(this.height / 2).strength(0.05))
-      .force("drag", this.createDragForce(0.02));
+      .force("charge", d3.forceManyBody().strength(-10))
+      .force("x", d3.forceX(this.width / 2).strength(0.01))
+      .force("y", d3.forceY(this.height / 2).strength(0.01))
+      .force("drag", this.createDragForce(0.01));
 
     // Tick 更新逻辑
     this.simulation.on("tick", () => {
