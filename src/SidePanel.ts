@@ -267,32 +267,20 @@ export class TopSidePanel {
     this.buttons.forEach((button, button_id) => {
       if (button_id === "btn-map-view") {
         button.addEventListener("click", () => {
-          this.changeToMapView();
+          console.log("切换到地图视图");
+          this.ctx.onVievChange("map");
         });
       } else if (button_id === "btn-distance-view") {
         button.addEventListener("click", () => {
-          this.changeToDistanceView();
+          console.log("切换到地图视图");
+          this.ctx.onVievChange("distance");
         });
       } else if (button_id === "btn-time-view") {
         button.addEventListener("click", () => {
-          this.changeToTimeView();
+          console.log("切换到时间视图");
+          this.ctx.onVievChange("time");
         });
       }
     });
-  }
-
-  private changeToMapView() {
-    console.log("切换到地图视图");
-    this.ctx.renderMap();
-  }
-
-  private changeToDistanceView() {
-    console.log("切换到距离视图");
-    this.ctx.renderGraph("distance");
-  }
-
-  private changeToTimeView() {
-    console.log("切换到时间视图");
-    this.ctx.renderGraph("time");
   }
 }

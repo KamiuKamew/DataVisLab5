@@ -34,7 +34,7 @@ body {
 .sidebar {
   position: absolute;
   right: 70px; /* 让侧边栏显示在按钮左边 */
-  width: 200px;
+  width: 400px;
   background-color: white;
   box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
   border: 1px solid #ddd;
@@ -44,7 +44,7 @@ body {
   /* 圆角 */
   border-radius: 10px;
   /* 透明度 */
-  opacity: 0.2;
+  opacity: 0.5;
 }
 
 /* 图像和表格内容 */
@@ -78,7 +78,7 @@ body {
 }
 
 .sidebar-group-1 {
-  background-color: #2196f3;
+  background-color: #b1dcff;
 }
 
 .sidebar-group-2 {

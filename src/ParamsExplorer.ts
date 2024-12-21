@@ -1,4 +1,3 @@
-import { c } from "vite/dist/node/types.d-aGj9QkWt";
 import { Context } from "./Context";
 import { Data, NodeTable } from "./Data";
 import { Names } from "./Names";
@@ -7,8 +6,6 @@ import { Graph } from "./Graph/Basic/Graph";
 export class ParamsExplorer {
   private sidePanelContent: HTMLElement;
 
-  private dataCategory: string | null = null;
-
   constructor(private ctx: Context, private data: Data) {
     this.sidePanelContent = document.getElementById(
       Names.LeftPanel_SidePanelContent
@@ -16,8 +13,6 @@ export class ParamsExplorer {
   }
 
   explore(dataCategory: string, id?: string) {
-    this.dataCategory = dataCategory;
-
     if (typeof id !== "string") {
       console.warn("[ParamsExplorer] id: ", id);
       throw new Error("[ParamsExplorer] Invalid id");
@@ -98,7 +93,7 @@ export class ParamsExplorer {
             }
 
             // 更新视图
-            this.ctx.rerender(this.dataCategory!, id);
+            this.ctx.onParamChange(id);
           }
         });
       }

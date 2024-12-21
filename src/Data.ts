@@ -17,7 +17,7 @@ export type AdjacencyTable = {
       id: string;
       name: string;
 
-      params?: [number, number, number];
+      params?: [number, number, number]; // duration_minute, distance_km, _
     };
   };
 };

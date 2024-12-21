@@ -19,6 +19,8 @@ export class GraphContext {
   private simulator: ForceSimulator | null;
   private model: "distance" | "time" | null;
 
+  private isiniting: boolean = false;
+
   constructor(
     private ctx: Context,
     private zoom: d3.ZoomBehavior<SVGSVGElement, unknown>,
@@ -73,10 +75,12 @@ export class GraphContext {
         geo_info: [0, 0],
         access_info: 0,
       };
+      if (!this.isiniting) this.ctx.onParamChange(id);
     });
 
     graphEventManager.on("NodeRemoved", (id: string) => {
       delete this.ctx.data.nodes()[id];
+      if (!this.isiniting) this.ctx.onParamChange(id);
     });
 
     graphEventManager.on("EdgeAdded", (id: string) => {
@@ -94,11 +98,13 @@ export class GraphContext {
         };
       }
       this.ctx.data.adjacencyTable()[sourceId][targetId].params = [distance, 3 * distance, 0];
+      if (!this.isiniting) this.ctx.onParamChange(id);
     });
 
     graphEventManager.on("EdgeRemoved", (id: string) => {
       const [sourceId, targetId] = id.split("->");
       delete this.ctx.data.adjacencyTable()[sourceId][targetId];
+      if (!this.isiniting) this.ctx.onParamChange(id);
     });
   }
 
@@ -120,8 +126,8 @@ export class GraphContext {
     });
   }
 
-  private loadEdges(model: "distance" | "time"): void {
-    Promise.resolve(this.ctx.data.adjacencyTable()).then((data) => {
+  private async loadEdges(model: "distance" | "time"): Promise<void> {
+    return Promise.resolve(this.ctx.data.adjacencyTable()).then((data) => {
       // 哦草了，不要问我为什么要把这里写成异步的。不这样写会有很奇怪的bug，天哪。不信你可以试试用下面注释里的内容跑一下。
       // const data = this.ctx.data.adjacencyTable();
       Object.entries(data).forEach(([sourceId, value]: [string, any]) => {
@@ -161,12 +167,14 @@ export class GraphContext {
   }
 
   public init(model: "distance" | "time"): void {
+    this.isiniting = true;
+
     this.model = model;
 
     this.svg.on("click", () => {});
 
     this.loadNodes();
-    this.loadEdges(model);
+    const promise = this.loadEdges(model);
     this.simulator = new ForceSimulator(this, this.graph, this.g, this.canvasEventManager);
 
     this.graph.registerCallbacks(this.canvasEventManager);
@@ -174,6 +182,10 @@ export class GraphContext {
     this.registerCallbacks(this.graphEventManager);
 
     this.canvasEventAnalyst.activate();
+
+    promise.then(() => {
+      this.isiniting = false;
+    });
   }
 
   public render(): void {

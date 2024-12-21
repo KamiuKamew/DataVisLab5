@@ -341,8 +341,7 @@ export class MapContext {
       .attr("stroke-width", 2 / transform.k); // 更新线的宽度
   }
 
-  public rerender(dataCategory: string, id: string): void {
-    if (dataCategory === Names.DataCategory_Station) this.rerenderNode(id);
-    else if (dataCategory === Names.DataCategory_Track) this.rerenderLine(id);
+  public rerender(itemId: string): void {
+    return Graph.isEdgeId(itemId) ? this.rerenderLine(itemId) : this.rerenderNode(itemId);
   }
 }
