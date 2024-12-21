@@ -72,11 +72,9 @@ export class ShortestPath {
     console.log(`Total paths: ${total}`);
   }
 
-  // 重新计算指定节点到其他所有节点之间的最短路径
   public calcNode(source_name: string) {
     [0, 1, 2].forEach((paramId) => {
-      const adj = this.adjacencyTable;
-      const nodes = Object.keys(adj);
+      const nodes = Object.keys(this.adjacencyTable);
       const dist: { [key: string]: number } = {};
       const prev: { [key: string]: string | null } = {};
       const passByNodesId: { [key: string]: string[] } = {};
@@ -97,7 +95,7 @@ export class ShortestPath {
       while (pq.size() > 0) {
         const [u, u_dist] = pq.deq();
 
-        const neighbors = adj[u];
+        const neighbors = this.adjacencyTable[u];
         for (const [v, edge] of Object.entries(neighbors)) {
           const weight = edge.params ? edge.params[paramId] : Infinity;
 
@@ -116,6 +114,11 @@ export class ShortestPath {
       nodes.forEach((target) => {
         if (dist[target] !== Infinity) {
           this.shortestPathTable[source_name][target].params[paramId] = {
+            passByNodesId: passByNodesId[target],
+            passByEdgeId: passByEdgeId[target],
+            param: dist[target],
+          };
+          this.shortestPathTable[target][source_name].params[paramId] = {
             passByNodesId: passByNodesId[target],
             passByEdgeId: passByEdgeId[target],
             param: dist[target],

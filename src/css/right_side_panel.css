@@ -43,8 +43,6 @@ body {
   z-index: 10;
   /* 圆角 */
   border-radius: 10px;
-  /* 透明度 */
-  opacity: 0.5;
 }
 
 /* 图像和表格内容 */
@@ -78,11 +76,11 @@ body {
 }
 
 .sidebar-group-1 {
-  background-color: #b1dcff;
+  background-color: rgba(114, 242, 255, 0.5);
 }
 
 .sidebar-group-2 {
-  background-color: #ff9800;
+  background-color: rgba(255, 111, 0, 0.5);
 }
 
 .sidebar-group-3 {

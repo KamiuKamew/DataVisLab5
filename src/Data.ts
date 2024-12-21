@@ -60,50 +60,54 @@ export class Data {
         });
       }),
 
-      d3.json(AdjacencyTableURL).then((data_2: any) => {
-        Object.entries(data_2).forEach(([source_name, targets]: [string, any]) => {
-          if (this._adjacencyTable[source_name]) {
-            Object.entries(targets).forEach(
-              ([target_name, [duration_minute, distance_km, _]]: [string, any]) => {
-                if (
-                  source_name !== target_name &&
-                  this._adjacencyTable[target_name][source_name] === undefined
-                ) {
-                  const name = Graph.getEdgeId(source_name, target_name);
-                  this._adjacencyTable[source_name][target_name] = {
-                    id: name,
-                    name: name,
+      d3
+        .json(AdjacencyTableURL)
+        .then((data_2: any) => {
+          Object.entries(data_2).forEach(([source_name, targets]: [string, any]) => {
+            if (this._adjacencyTable[source_name]) {
+              Object.entries(targets).forEach(
+                ([target_name, [duration_minute, distance_km, _]]: [string, any]) => {
+                  if (
+                    source_name !== target_name &&
+                    this._adjacencyTable[target_name][source_name] === undefined
+                  ) {
+                    const name = Graph.getEdgeId(source_name, target_name);
+                    this._adjacencyTable[source_name][target_name] = {
+                      id: name,
+                      name: name,
 
-                    trainShifts: 0,
-                    params: [duration_minute, distance_km, _],
-                  };
+                      trainShifts: 0,
+                      params: [duration_minute, distance_km, _],
+                    };
+                  }
                 }
-              }
-            );
-          }
-        });
-      }),
-      d3.json(TrainInfoURL).then((data_2: any) => {
-        Object.entries(data_2).forEach(([source_name, targets]: [string, any]) => {
-          if (this._adjacencyTable[source_name]) {
-            Object.entries(targets).forEach(([target_name, trainShifts]: [string, any]) => {
-              if (
-                source_name !== target_name &&
-                this._adjacencyTable[target_name][source_name] === undefined
-              ) {
-                const name = Graph.getEdgeId(source_name, target_name);
-                this._adjacencyTable[source_name][target_name] = {
-                  id: name,
-                  name: name,
+              );
+            }
+          });
+        })
+        .then(() => {
+          d3.json(TrainInfoURL).then((data_2: any) => {
+            Object.entries(data_2).forEach(([source_name, targets]: [string, any]) => {
+              if (this._adjacencyTable[source_name]) {
+                Object.entries(targets).forEach(([target_name, trainShifts]: [string, any]) => {
+                  if (
+                    source_name !== target_name &&
+                    this._adjacencyTable[target_name][source_name] === undefined
+                  ) {
+                    const name = Graph.getEdgeId(source_name, target_name);
+                    this._adjacencyTable[source_name][target_name] = {
+                      id: name,
+                      name: name,
 
-                  trainShifts: trainShifts,
-                  params: [0, 0, 0],
-                };
+                      trainShifts: trainShifts,
+                      params: [0, 0, 0],
+                    };
+                  }
+                });
               }
             });
-          }
-        });
-      }),
+          });
+        }),
     ]);
     console.log(this._nodes);
     console.log(this._adjacencyTable);
