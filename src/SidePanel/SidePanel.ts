@@ -1,3 +1,4 @@
+import * as d3 from "d3";
 import { Context } from "../Context";
 import { Names } from "../Names";
 
@@ -222,6 +223,8 @@ export class RightSidePanel {
       startY = e.clientY;
       startTop = parseInt(window.getComputedStyle(sidebar).top, 10);
       e.preventDefault();
+      // 将当前侧边栏置顶
+      d3.select(sidebar).raise();
     });
 
     document.addEventListener("mousemove", (e) => {
