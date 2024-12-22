@@ -106,11 +106,42 @@ export class ForceSimulator {
   private updateNodes(): void {
     const nodeGroup = this.canvas.select(".nodes");
     const node = nodeGroup
-      .selectAll<SVGCircleElement, Node>("circle")
+      .selectAll<SVGGElement, Node>("g") // 使用g元素包裹每个节点和标签
       .data(this.graph.getNodes(), (d: Node) => d._id);
 
-    node
+    const transform = d3.zoomTransform(this.canvas.node()!);
+
+    // const k = transform.k;
+    const k = 1.5;
+    // 创建新的节点和标签
+    const nodes = node
       .enter()
+      .append("g")
+      .attr("id", (d: any) => d._id)
+      .attr(
+        "transform",
+        (d: any) => `translate(${d.x}, ${d.y})` // 直接使用节点的坐标进行平移
+      );
+
+    // 创建标签背景和边框
+    nodes
+      .append("rect")
+      .attr("x", -25 / k) // 设置矩形的起始位置
+      .attr("y", -20 / k) // 设置矩形的起始位置
+      .attr("width", 50 / k) // 设置宽度
+      .attr("height", 20 / k) // 设置高度
+      .attr("rx", 5 / k) // 设置圆角
+      .attr("ry", 5 / k) // 设置圆角
+      .style("fill", "white")
+      .style("stroke", "black")
+      .style("stroke-width", 1 / k)
+      .style("opacity", 0.7)
+      .on("mouseover", (event: MouseEvent, d: any) => {
+        d3.select((event.currentTarget as any).parentNode).raise();
+      });
+
+    // 绘制节点
+    nodes
       .append("circle")
       .attr("id", (d) => `node-${d._id}`)
       .attr("r", (d) => NODE_DEFAULT_RADIUS)
@@ -123,7 +154,7 @@ export class ForceSimulator {
       .on("mouseover", (event, d: any) => {
         d3.select(event.target).attr("fill", "lightblue");
         d.hoved = true;
-        console.log("Mouseover on node:", d);
+        // console.log("Mouseover on node:", d);
       }) // 设置鼠标移入节点时变色
       .on("mouseout", (event, d: any) => {
         d3.select(event.target).attr("fill", "steelblue");
@@ -131,9 +162,6 @@ export class ForceSimulator {
       })
       .on("click", (event: MouseEvent, d: any) => {
         this.canvasEventManager.trigger("NodeClicked", { event, id: d._id });
-
-        // 阻止事件传播
-        console.log("[ForceSimulator] clicked node: ", d);
         this.ctx.exploreParams(Names.DataCategory_Station, d._id);
       })
       .on("mousedown", (event: MouseEvent, d: any) => {
@@ -166,9 +194,24 @@ export class ForceSimulator {
         this.applyDragBehavior(enter);
       });
 
+    // 创建标签
+    nodes
+      .append("text")
+      .attr("x", 0) // 设置标签的偏移量
+      .attr("y", -6 / k)
+      .attr("text-anchor", "middle")
+      .style("font-size", `${12 / k}px`)
+      .style("cursor", "pointer")
+      .text((d: any) => d.name) // 显示节点名称
+      .on("mouseover", (event: MouseEvent, d: any) => {
+        d3.select((event.currentTarget as any).parentNode).raise();
+      });
+
+    // 删除已退出的节点
     node.exit().remove();
 
-    node.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
+    // 更新节点位置
+    node.attr("transform", (d) => `translate(${d.x}, ${d.y})`);
   }
 
   /**
@@ -196,7 +239,7 @@ export class ForceSimulator {
       .on("mouseover", (event, d: any) => {
         d3.select(event.target).attr("stroke", "lightblue");
         d.hoved = true;
-        console.log("Mouseover on edge:", d);
+        // console.log("Mouseover on edge:", d);
       }) // 设置鼠标移入边时变色
       .on("mouseout", (event, d: any) => {
         d.hoved = false;
@@ -300,6 +343,11 @@ export class ForceSimulator {
   }
 
   private dragEnded(event: d3.D3DragEvent<SVGCircleElement, Node, Node>): void {
+    console.log(
+      "[forceSimulator] drag ended: ",
+      this.draggedNode,
+      this.findNodeUnderPlace(event.x, event.y)
+    );
     if (this.draggedNode)
       // this.controller.getCanvasEventAnalyst().onDragEnd(event, this.draggedNode);
       this.canvasEventManager.trigger("NodeDragEnd", {
@@ -313,14 +361,16 @@ export class ForceSimulator {
   }
 
   private findNodeUnderPlace(x: number, y: number): Node | null {
-    const nodes = this.graph.getNodes();
-    for (let node of nodes) {
-      const distance = Math.sqrt(Math.pow(node.x - x, 2) + Math.pow(node.y - y, 2));
-      if (distance < NODE_DEFAULT_RADIUS) {
-        return node;
-      }
-    }
-    return null;
+    const foundNode: string[] = [];
+    this.canvas.selectAll("g").each(function (d, i) {
+      const circles = d3.select(this).selectAll("circle");
+      // console.log(`g element ${i} circles:`, circles.size() > 0 ? circles.nodes() : "No circles");
+      circles.each((d: any) => {
+        if (d.hoved) foundNode.push(d._id);
+      });
+    });
+    // console.log(`foundNode:`, foundNode);
+    return this.graph.getNodeById(foundNode[0]) ?? null;
   }
 
   public renderTrainLine(passByNodesId: string[], passByEdgesId: string[]): void {
@@ -360,7 +410,7 @@ export class ForceSimulator {
         .on("mouseover", (event, d: any) => {
           d3.select(event.target).attr("fill", "lightblue");
           d.hoved = true;
-          console.log("Mouseover on node:", d);
+          // console.log("Mouseover on node:", d);
         }) // 设置鼠标移入节点时变色
         .on("mouseout", (event, d: any) => {
           d3.select(event.target).attr("fill", "steelblue");
@@ -374,7 +424,7 @@ export class ForceSimulator {
         .on("mouseover", (event, d: any) => {
           d3.select(event.target).attr("stroke", "lightblue");
           d.hoved = true;
-          console.log("Mouseover on edge:", d);
+          // console.log("Mouseover on edge:", d);
         })
         .on("mouseout", (event, d: any) => {
           d.hoved = false;

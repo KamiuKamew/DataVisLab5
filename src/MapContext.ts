@@ -231,7 +231,10 @@ export class MapContext {
       .style("fill", "white")
       .style("stroke", "black")
       .style("stroke-width", 1 / transform.k)
-      .style("opacity", 0.7);
+      .style("opacity", 0.7)
+      .on("mouseover", (event: MouseEvent, d: any) => {
+        d3.select((event.currentTarget as any).parentNode).raise();
+      });
 
     // 绘制节点
     nodes
@@ -241,9 +244,9 @@ export class MapContext {
       .attr("fill", this.nodeColorEncoder()) // 设置圆的填充颜色
       .attr("stroke", "black") // 设置圆的边框颜色
       .attr("stroke-width", this.nodeStrokeWidthEncoder(transform, 2))
-      // .attr(Names.DataCategory, Names.DataCategory_Station)
       .on("mouseover", (event: MouseEvent, d: any) => {
         console.log("[MapContext] mouseover node: ", d);
+        d3.select((event.currentTarget as any).parentNode).raise();
       })
       .on("mousedown", (event: MouseEvent, d: any) => {
         // 阻止事件传播
@@ -283,7 +286,10 @@ export class MapContext {
       .attr("text-anchor", "middle")
       .style("font-size", `${12 / transform.k}px`)
       .style("cursor", "pointer")
-      .text((d: any) => d[1]["name"]); // 显示节点名称
+      .text((d: any) => d[1]["name"]) // 显示节点名称
+      .on("mouseover", (event: MouseEvent, d: any) => {
+        d3.select((event.currentTarget as any).parentNode).raise();
+      });
 
     // // 鼠标悬浮时显示更多信息，并调整标签样式
     // label

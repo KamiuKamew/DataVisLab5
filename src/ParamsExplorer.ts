@@ -32,7 +32,7 @@ export class ParamsExplorer {
       throw new Error("[ParamsExplorer] Invalid dataCategory or id");
     }
 
-    console.log("[ParamsExplorer] explore", id, targetParams);
+    // console.log("[ParamsExplorer] explore", id, targetParams);
 
     // 创建一个表单元素来展示参数
     const parameterForm = document.createElement("form");

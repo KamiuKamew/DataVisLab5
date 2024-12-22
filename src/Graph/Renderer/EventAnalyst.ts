@@ -31,7 +31,6 @@ export class CanvasEventAnalyst {
 
     this.canvas.addEventListener("mousemove", (event: MouseEvent) => {
       event.stopPropagation();
-      console.log("Middle mouse button dragged");
       this.analyzeMouseMove(event);
     });
 
