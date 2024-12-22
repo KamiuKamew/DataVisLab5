@@ -56,7 +56,8 @@
       border-radius: 4px;
       font-size: 12px;
       pointer-events: none;
-      z-index: 1000; /* 确保 Tooltip 在最上层 */
+      z-index: 1000;
+      /* 确保 Tooltip 在最上层 */
     }
 
     /* 其他样式文件的引入 */
@@ -339,13 +340,544 @@
           .text(type);
       });
     }
+    function createParallelCoords() {
+      const container = d3.select("#parallel-coords");
+      container.append("div")
+        .attr("class", "chart-title")
+        .text("多维度路线对比");
+
+      const margin = { top: 30, right: 50, bottom: 30, left: 50 };
+      const width = container.node().getBoundingClientRect().width - margin.left - margin.right;
+      const height = 400 - margin.top - margin.bottom;
+
+      const svg = container.append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      // 定义维度
+      const dimensions = ['distance', 'time', 'price', 'frequency'];
+      const dimensionLabels = {
+        'distance': '距离 (km)',
+        'time': '时间 (小时)',
+        'price': '票价 (元)',
+        'frequency': '班次 (趟/天)'
+      };
+
+      // 创建比例尺
+      const scales = {};
+      dimensions.forEach(dim => {
+        scales[dim] = d3.scaleLinear()
+          .domain(d3.extent(data.routes, d => d[dim]))
+          .range([height, 0]);
+      });
+
+      // 创建坐标轴
+      const xScale = d3.scalePoint()
+        .domain(dimensions)
+        .range([0, width]);
+
+      // 绘制坐标轴
+      dimensions.forEach(dim => {
+        const axis = d3.axisLeft(scales[dim]);
+        svg.append("g")
+          .attr("transform", `translate(${xScale(dim)},0)`)
+          .call(axis);
+
+        // 添加标签
+        svg.append("text")
+          .attr("x", xScale(dim))
+          .attr("y", height + 20)
+          .style("text-anchor", "middle")
+          .style("font-size", "12px")
+          .text(dimensionLabels[dim]);
+      });
+
+      // 创建线条生成器
+      const line = d3.line()
+        .defined(d => !isNaN(d[1]))
+        .x(d => xScale(d[0]))
+        .y(d => scales[d[0]](d[1]));
+
+      // 绘制线条
+      svg.selectAll(".route-line")
+        .data(data.routes)
+        .join("path")
+        .attr("class", "route-line")
+        .attr("d", d => {
+          return line(dimensions.map(dim => [dim, d[dim]]));
+        })
+        .style("fill", "none")
+        .style("stroke", d => d3.scaleOrdinal()
+          .domain(['高铁', '动车', '普快', '特快'])
+          .range(['#ff7675', '#74b9ff', '#55efc4', '#ffeaa7'])(d.type))
+        .style("opacity", 0.5)
+        .on("mouseover", function (event, d) {
+          d3.select(this)
+            .style("stroke-width", 3)
+            .style("opacity", 1);
+          tooltip.transition()
+            .duration(200)
+            .style("opacity", .9);
+          tooltip.html(`${d.from} - ${d.to}<br/>
+                        类型: ${d.type}<br/>
+                        距离: ${d.distance}km<br/>
+                        时间: ${d.time}小时<br/>
+                        票价: ${d.price}元<br/>
+                        班次: ${d.frequency}趟/天`)
+            .style("left", (event.pageX + 10) + "px")
+            .style("top", (event.pageY - 28) + "px");
+        })
+        .on("mouseout", function () {
+          d3.select(this)
+            .style("stroke-width", 1)
+            .style("opacity", 0.5);
+          tooltip.transition()
+            .duration(500)
+            .style("opacity", 0);
+        });
+    }
+    function createSunburst() {
+      const container = d3.select("#sunburst");
+      container.append("div")
+        .attr("class", "chart-title")
+        .text("路线类型分布");
+
+      const margin = { top: 20, right: 20, bottom: 20, left: 20 };
+      const width = container.node().getBoundingClientRect().width - margin.left - margin.right;
+      const height = 400 - margin.top - margin.bottom;
+      const radius = Math.min(width, height) / 2;
+
+      const svg = container.append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", `translate(${width / 2 + margin.left},${height / 2 + margin.top})`);
+
+      // 处理数据为层次结构  
+      function processData() {
+        const routesByType = d3.group(data.routes, d => d.type);
+        const hierarchyData = {
+          name: "路线",
+          children: Array.from(routesByType, ([type, routes]) => ({
+            name: type,
+            children: routes.map(route => ({
+              name: `${route.from}-${route.to}`,
+              value: route.passengers
+            }))
+          }))
+        };
+        return hierarchyData;
+      }
+
+      const root = d3.hierarchy(processData())
+        .sum(d => d.value)
+        .sort((a, b) => b.value - a.value);
+
+      // 创建分区布局  
+      const partition = d3.partition()
+        .size([2 * Math.PI, radius]);
+
+      partition(root);
+
+      // 创建弧生成器  
+      const arc = d3.arc()
+        .startAngle(d => d.x0)
+        .endAngle(d => d.x1)
+        .padAngle(0.01)
+        .padRadius(radius / 3)
+        .innerRadius(d => Math.sqrt(d.y0))
+        .outerRadius(d => Math.sqrt(d.y1));
+
+      // 颜色比例尺  
+      const colorScale = d3.scaleOrdinal()
+        .domain(['高铁', '动车', '普快', '特快'])
+        .range(['#ff7675', '#74b9ff', '#55efc4', '#ffeaa7']);
+
+      // 绘制弧  
+      const paths = svg.selectAll("path")
+        .data(root.descendants())
+        .join("path")
+        .attr("fill", d => {
+          while (d.depth > 1) d = d.parent;
+          return d.depth === 1 ? colorScale(d.data.name) : "#fff";
+        })
+        .attr("fill-opacity", d => d.depth === 0 ? 0 : 0.8)
+        .attr("d", arc);
+
+      // 添加交互  
+      paths.on("mouseover", function (event, d) {
+        d3.select(this)
+          .attr("fill-opacity", 1)
+          .attr("stroke", "#fff")
+          .attr("stroke-width", 2);
+
+        let tooltipContent = "";
+        if (d.depth === 1) {
+          tooltipContent = `${d.data.name}<br/>  
+                          路线数: ${d.children.length}<br/>  
+                          总客流量: ${d3.format(",.0f")(d.value)}人`;
+        } else if (d.depth === 2) {
+          tooltipContent = `${d.data.name}<br/>  
+                          类型: ${d.parent.data.name}<br/>  
+                          客流量: ${d3.format(",.0f")(d.value)}人`;
+        }
+
+        if (tooltipContent) {
+          tooltip.transition()
+            .duration(200)
+            .style("opacity", .9);
+          tooltip.html(tooltipContent)
+            .style("left", (event.pageX + 10) + "px")
+            .style("top", (event.pageY - 28) + "px");
+        }
+      })
+        .on("mouseout", function () {
+          d3.select(this)
+            .attr("fill-opacity", 0.8)
+            .attr("stroke", "none");
+
+          tooltip.transition()
+            .duration(500)
+            .style("opacity", 0);
+        });
+
+      // 添加中心文字  
+      svg.append("text")
+        .attr("text-anchor", "middle")
+        .attr("dy", "0.35em")
+        .attr("font-size", "14px")
+        .attr("fill", "#333")
+        .text("路线分布");
+
+      // 添加图例  
+      const legend = svg.append("g")
+        .attr("class", "legend")
+        .attr("transform", `translate(${radius + 20}, ${-radius + 20})`);
+
+      const trainTypes = ['高铁', '动车', '普快', '特快'];
+      trainTypes.forEach((type, i) => {
+        const legendRow = legend.append("g")
+          .attr("transform", `translate(0, ${i * 20})`);
+
+        legendRow.append("rect")
+          .attr("width", 12)
+          .attr("height", 12)
+          .attr("fill", colorScale(type));
+
+        legendRow.append("text")
+          .attr("x", 20)
+          .attr("y", 10)
+          .style("font-size", "12px")
+          .text(type);
+      });
+
+      // 添加动画效果  
+      paths.transition()
+        .duration(1000)
+        .attrTween("d", function (d) {
+          const interpolate = d3.interpolate(
+            { x0: d.x0, x1: d.x0, y0: d.y0, y1: d.y0 },
+            { x0: d.x0, x1: d.x1, y0: d.y0, y1: d.y1 }
+          );
+          return t => arc(interpolate(t));
+        });
+    }
+    function createStackedArea() {
+      const container = d3.select("#stacked-area");
+      container.append("div")
+        .attr("class", "chart-title")
+        .text("客流量趋势分析");
+
+      const margin = { top: 20, right: 30, bottom: 30, left: 50 };
+      const width = container.node().getBoundingClientRect().width - margin.left - margin.right;
+      const height = 400 - margin.top - margin.bottom;
+
+      const svg = container.append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      // 处理数据
+      const parseDate = d3.timeParse("%Y-%m-%d");
+      const timeData = data.timeSeries.map(d => ({
+        date: d.date instanceof Date ? d.date : parseDate(d.date),
+        value: d.passengers
+      }));
+
+      // 创建比例尺
+      const xScale = d3.scaleTime()
+        .domain(d3.extent(timeData, d => d.date))
+        .range([0, width]);
+
+      const yScale = d3.scaleLinear()
+        .domain([0, d3.max(timeData, d => d.value)])
+        .range([height, 0]);
+
+      // 创建面积生成器
+      const area = d3.area()
+        .x(d => xScale(d.date))
+        .y0(height)
+        .y1(d => yScale(d.value))
+        .curve(d3.curveMonotoneX);
+
+      // 创建线条生成器
+      const line = d3.line()
+        .x(d => xScale(d.date))
+        .y(d => yScale(d.value))
+        .curve(d3.curveMonotoneX);
+
+      // 绘制面积
+      svg.append("path")
+        .datum(timeData)
+        .attr("class", "area")
+        .attr("d", area)
+        .attr("fill", "url(#gradient)");
+
+      // 创建渐变
+      const gradient = svg.append("defs")
+        .append("linearGradient")
+        .attr("id", "gradient")
+        .attr("x1", "0%")
+        .attr("y1", "0%")
+        .attr("x2", "0%")
+        .attr("y2", "100%");
+
+      gradient.append("stop")
+        .attr("offset", "0%")
+        .attr("stop-color", "#74b9ff")
+        .attr("stop-opacity", 0.8);
+
+      gradient.append("stop")
+        .attr("offset", "100%")
+        .attr("stop-color", "#74b9ff")
+        .attr("stop-opacity", 0.2);
+
+      // 绘制线条
+      svg.append("path")
+        .datum(timeData)
+        .attr("class", "line")
+        .attr("fill", "none")
+        .attr("stroke", "#0984e3")
+        .attr("stroke-width", 2)
+        .attr("d", line);
+
+      // 添加坐标轴
+      const xAxis = d3.axisBottom(xScale)
+        .ticks(5)
+        .tickFormat(d3.timeFormat("%Y-%m"));
+
+      const yAxis = d3.axisLeft(yScale)
+        .ticks(5)
+        .tickFormat(d => d / 10000 + "万");
+
+      svg.append("g")
+        .attr("transform", `translate(0,${height})`)
+        .call(xAxis);
+
+      svg.append("g")
+        .call(yAxis);
+
+      // 添加交互
+      const bisect = d3.bisector(d => d.date).left;
+
+      const focus = svg.append("g")
+        .style("display", "none");
+
+      focus.append("circle")
+        .attr("r", 5)
+        .attr("fill", "#0984e3");
+
+      focus.append("rect")
+        .attr("class", "tooltip-bg")
+        .attr("fill", "white")
+        .attr("rx", 4)
+        .attr("ry", 4);
+
+      focus.append("text")
+        .attr("class", "tooltip-text")
+        .attr("x", 10)
+        .attr("dy", "1.2em");
+
+      svg.append("rect")
+        .attr("class", "overlay")
+        .attr("width", width)
+        .attr("height", height)
+        .attr("fill", "none")
+        .attr("pointer-events", "all")
+        .on("mouseover", () => focus.style("display", null))
+        .on("mouseout", () => focus.style("display", "none"))
+        .on("mousemove", function (event) {
+          const x0 = xScale.invert(d3.pointer(event, this)[0]);
+          const i = bisect(timeData, x0, 1);
+          const d0 = timeData[i - 1];
+          const d1 = timeData[i];
+          const d = x0 - d0.date > d1.date - x0 ? d1 : d0;
+
+          focus.attr("transform", `translate(${xScale(d.date)},${yScale(d.value)})`);
+          focus.select("text").text(`${d3.timeFormat("%Y-%m-%d")(d.date)}: ${(d.value / 10000).toFixed(1)}万人`);
+
+          const bbox = focus.select("text").node().getBBox();
+          focus.select("rect")
+            .attr("x", bbox.x - 4)
+            .attr("y", bbox.y - 4)
+            .attr("width", bbox.width + 8)
+            .attr("height", bbox.height + 8);
+        });
+    }
+    function createCalendarHeatmap() {  
+      const container = d3.select("#calendar-heatmap");  
+      container.append("div")  
+          .attr("class", "chart-title")  
+          .text("客流量日历热力图");  
+  
+      const margin = {top: 20, right: 30, bottom: 20, left: 40};  
+      const width = container.node().getBoundingClientRect().width - margin.left - margin.right;  
+      const height = 400 - margin.top - margin.bottom;  
+      const cellSize = Math.min(width / 53, height / 7); // 52周 + 1，7天  
+  
+      const svg = container.append("svg")  
+          .attr("width", width + margin.left + margin.right)  
+          .attr("height", height + margin.top + margin.bottom)  
+          .append("g")  
+          .attr("transform", `translate(${margin.left},${margin.top})`);  
+  
+      // 处理数据  
+      const timeData = data.timeSeries;  
+  
+      // 创建颜色比例尺  
+      const colorScale = d3.scaleSequential()  
+          .domain([d3.min(timeData, d => d.passengers), d3.max(timeData, d => d.passengers)])  
+          .interpolator(d3.interpolateYlOrRd);  
+  
+      // 创建时间格式化函数  
+      const formatDay = d => "SMTWTFS"[d.getDay()];  
+      const formatMonth = d3.timeFormat("%b");  
+      const formatDate = d3.timeFormat("%Y-%m-%d");  
+      const formatValue = d3.format(",.0f");  
+  
+      // 计算日期范围  
+      const dates = timeData.map(d => d.date);  
+      const startDate = d3.min(dates);  
+      const endDate = d3.max(dates);  
+  
+      // 创建年周比例尺  
+      const weekScale = d3.scaleTime()  
+          .domain([startDate, endDate])  
+          .range([0, width - cellSize]);  
+  
+      // 创建星期比例尺  
+      const dayScale = d3.scaleBand()  
+          .domain(d3.range(7))  
+          .range([0, 7 * cellSize]);  
+  
+      // 绘制日历网格  
+      const days = svg.selectAll(".day")  
+          .data(timeData)  
+          .join("rect")  
+          .attr("class", "day")  
+          .attr("width", cellSize - 1)  
+          .attr("height", cellSize - 1)  
+          .attr("x", d => d3.timeWeek.count(d3.timeYear(startDate), d.date) * cellSize)  
+          .attr("y", d => d.date.getDay() * cellSize)  
+          .attr("fill", d => colorScale(d.passengers))  
+          .attr("rx", 2)  
+          .attr("ry", 2);  
+  
+      // 添加交互  
+      days.on("mouseover", function(event, d) {  
+          d3.select(this)  
+              .attr("stroke", "#2d3436")  
+              .attr("stroke-width", 2);  
+  
+          tooltip.transition()  
+              .duration(200)  
+              .style("opacity", .9);  
+          tooltip.html(`日期: ${formatDate(d.date)}<br/>  
+                      客流量: ${formatValue(d.passengers)}人<br/>  
+                      列车数: ${d.trains}趟`)  
+              .style("left", (event.pageX + 10) + "px")  
+              .style("top", (event.pageY - 28) + "px");  
+      })  
+      .on("mouseout", function() {  
+          d3.select(this)  
+              .attr("stroke", "none");  
+          
+          tooltip.transition()  
+              .duration(500)  
+              .style("opacity", 0);  
+      });  
+  
+      // 添加月份标签  
+      const months = d3.timeMonths(startDate, endDate);  
+      svg.append("g")  
+          .selectAll(".month")  
+          .data(months)  
+          .join("text")  
+          .attr("class", "month")  
+          .attr("x", d => d3.timeWeek.count(d3.timeYear(startDate), d) * cellSize)  
+          .attr("y", -5)  
+          .text(formatMonth);  
+  
+      // 添加星期标签  
+      svg.append("g")  
+          .selectAll(".weekday")  
+          .data(d3.range(7))  
+          .join("text")  
+          .attr("class", "weekday")  
+          .attr("x", -10)  
+          .attr("y", d => (d + 0.5) * cellSize)  
+          .attr("dy", "0.35em")  
+          .style("text-anchor", "end")  
+          .text(d => "日一二三四五六"[d]);  
+  
+      // 添加图例  
+      const legendWidth = 200;  
+      const legendHeight = 10;  
+      
+      const legendScale = d3.scaleLinear()  
+          .domain(colorScale.domain())  
+          .range([0, legendWidth]);  
+  
+      const legendAxis = d3.axisBottom(legendScale)  
+          .ticks(5)  
+          .tickFormat(formatValue);  
+  
+      const legend = svg.append("g")  
+          .attr("class", "legend")  
+          .attr("transform", `translate(${width - legendWidth - 10},${height - 30})`);  
+  
+      const defs = legend.append("defs");  
+      const linearGradient = defs.append("linearGradient")  
+          .attr("id", "heatmap-gradient")  
+          .attr("x1", "0%")  
+          .attr("x2", "100%")  
+          .attr("y1", "0%")  
+          .attr("y2", "0%");  
+  
+      linearGradient.selectAll("stop")  
+          .data(d3.ticks(0, 1, 10))  
+          .join("stop")  
+          .attr("offset", d => d * 100 + "%")  
+          .attr("stop-color", d => colorScale(d3.interpolate(colorScale.domain()[0], colorScale.domain()[1])(d)));  
+  
+      legend.append("rect")  
+          .attr("width", legendWidth)  
+          .attr("height", legendHeight)  
+          .style("fill", "url(#heatmap-gradient)");  
+  
+      legend.append("g")  
+          .attr("transform", `translate(0,${legendHeight})`)  
+          .call(legendAxis);  
+  }  
+  
 
     // 主函数：初始化所有图表并添加响应式支持
     function initializeVisualization() {
       // 初始化所有图表
       createScatterMatrix();
-      // 如果有其他图表函数，可以在此调用
-
       // 添加窗口大小改变时的响应式处理
       let resizeTimeout;
       window.addEventListener('resize', function () {
@@ -368,13 +900,13 @@
         .attr("id", "visualization-controls")
         .attr("class", "flex justify-center space-x-4 my-4");
 
+
       const charts = [
         { id: "scatter-matrix", name: "散点矩阵" },
-        // 如果有其他图表，添加相应的 id 和 name
-        // { id: "parallel-coords", name: "平行坐标" },
-        // { id: "stacked-area", name: "趋势分析" },
-        // { id: "boxplot", name: "统计分布" },
-        // { id: "calendar-heatmap", name: "日历热力" }
+        { id: "parallel-coords", name: "平行坐标" },
+        { id: "stacked-area", name: "趋势分析" },
+        { id: "sunburst", name: "路线分布" },
+        { id: "calendar-heatmap", name: "日历热力" }
       ];
 
       charts.forEach((chart, index) => {
@@ -406,6 +938,7 @@
       // 默认显示第一个图表
       d3.select("#scatter-matrix").style("display", "block");
     }
+
 
     // 添加数据下载功能
     function addDataDownload() {
