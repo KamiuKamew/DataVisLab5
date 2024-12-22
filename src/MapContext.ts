@@ -122,6 +122,21 @@ export class MapContext {
 
     // 调整线的粗细
     this.gLines.selectAll("path").attr("stroke-width", this.lineWidthEncoder(transform));
+
+    this.gNodes
+      .selectAll("text")
+      .attr("y", -6 / transform.k)
+      .style("font-size", `${12 / transform.k}px`);
+
+    this.gNodes
+      .selectAll("rect")
+      .attr("x", -25 / transform.k) // 设置矩形的起始位置
+      .attr("y", -20 / transform.k) // 设置矩形的起始位置
+      .attr("width", 50 / transform.k) // 设置宽度
+      .attr("height", 20 / transform.k) // 设置高度
+      .attr("rx", 5 / transform.k) // 设置圆角
+      .attr("ry", 5 / transform.k) // 设置圆角
+      .style("stroke-width", 1 / transform.k);
   }
 
   public renderMap(): void {
@@ -191,13 +206,37 @@ export class MapContext {
     const transform = d3.zoomTransform(this.svg.node());
 
     const nodesData: NodeTable = this.ctx.data.nodes();
-    this.gNodes
-      .selectAll("circle")
+    const nodes = this.gNodes
+      .selectAll("g") // 使用g元素包裹每个节点和标签
       .data(Object.entries(nodesData))
-      .join("circle")
+      .join("g")
+      .attr("id", (d: any) => d[0])
+      .attr(
+        "transform",
+        (d: any) =>
+          `translate(${this.projection(d[1]["geo_info"])![0]}, ${
+            this.projection(d[1]["geo_info"])![1]
+          })`
+      );
+
+    // 创建标签背景和边框，确保它们处于最下层
+    nodes
+      .append("rect")
+      .attr("x", -25 / transform.k) // 设置矩形的起始位置
+      .attr("y", -20 / transform.k) // 设置矩形的起始位置
+      .attr("width", 50 / transform.k) // 设置宽度
+      .attr("height", 20 / transform.k) // 设置高度
+      .attr("rx", 5 / transform.k) // 设置圆角
+      .attr("ry", 5 / transform.k) // 设置圆角
+      .style("fill", "white")
+      .style("stroke", "black")
+      .style("stroke-width", 1 / transform.k)
+      .style("opacity", 0.7);
+
+    // 绘制节点
+    nodes
+      .append("circle")
       .attr("id", (d: any) => d[0]) // 设置节点的 id 属性
-      .attr("cx", (d: any) => this.projection(d[1]["geo_info"])![0]) // x 坐标
-      .attr("cy", (d: any) => this.projection(d[1]["geo_info"])![1]) // y 坐标
       .attr("r", 5 / transform.k) // 设置圆的半径
       .attr("fill", this.nodeColorEncoder()) // 设置圆的填充颜色
       .attr("stroke", "black") // 设置圆的边框颜色
@@ -235,6 +274,37 @@ export class MapContext {
         if (this.selectedNode1 && this.selectedNode2)
           this.ctx.renderShorestPath(this.selectedNode1, this.selectedNode2);
       });
+
+    // 创建标签
+    const label = nodes
+      .append("text")
+      .attr("x", 0) // 设置标签的偏移量
+      .attr("y", -6 / transform.k)
+      .attr("text-anchor", "middle")
+      .style("font-size", `${12 / transform.k}px`)
+      .style("cursor", "pointer")
+      .text((d: any) => d[1]["name"]); // 显示节点名称
+
+    // // 鼠标悬浮时显示更多信息，并调整标签样式
+    // label
+    //   .on("mouseover", function (event, d) {
+    //     d3.select(this).style("font-weight", "bold"); // 加粗字体
+    //     d3.select(this.previousElementSibling) // 获取rect元素
+    //       .style("fill", "#f0f0f0") // 改变背景色
+    //       .attr("width", 70) // 改变宽度
+    //       .attr("height", 30); // 改变高度
+    //     // 显示更多信息
+    //     const info = d[1]["extra_info"] || "No additional info"; // 可以根据需要添加更多信息
+    //     d3.select(this).text(info).style("font-size", "14px");
+    //   })
+    //   .on("mouseout", function (event, d) {
+    //     d3.select(this).style("font-weight", "normal");
+    //     d3.select(this.previousElementSibling)
+    //       .style("fill", "white")
+    //       .attr("width", 50)
+    //       .attr("height", 20);
+    //     d3.select(this).text(d[1]["name"]);
+    //   });
   }
 
   renderLines(): void {
