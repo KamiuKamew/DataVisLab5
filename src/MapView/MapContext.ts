@@ -1,8 +1,8 @@
 import * as d3 from "d3";
-import { Context } from "./Context";
-import { NodeTable } from "./Data";
-import { Names } from "./Names";
-import { Graph } from "./Graph/Basic/Graph";
+import { Context } from "../Context";
+import { NodeTable } from "../Data";
+import { Names } from "../Names";
+import { Graph } from "../GraphView/Basic/Graph";
 
 export class MapContext {
   private width: number = 975;

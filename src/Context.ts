@@ -1,13 +1,13 @@
 import * as d3 from "d3";
 
 import { Data } from "./Data";
-import { GraphContext } from "./Graph/GraphContext";
-import { MapContext } from "./MapContext";
-import { ParamsExplorer } from "./ParamsExplorer";
+import { GraphContext } from "./GraphView/GraphContext";
+import { MapContext } from "./MapView/MapContext";
+import { ParamsExplorer } from "./SidePanel/ParamsExplorer";
 import { ShortestPath } from "./ShortestPath";
-import { LeftSidePanel, RightSidePanel, TopSidePanel } from "./SidePanel";
-import { DensityCurve } from "./DensityCurve";
-import { HeatMap } from "./HeatMap";
+import { LeftSidePanel, RightSidePanel, TopSidePanel } from "./SidePanel/SidePanel";
+import { DensityCurve } from "./SidePanel/DensityCurve";
+import { HeatMap } from "./SidePanel/HeatMap";
 
 export class Context {
   data: Data;

@@ -1,5 +1,5 @@
 import * as d3 from "d3";
-import { ShortestPath } from "./ShortestPath";
+import { ShortestPath } from "../ShortestPath";
 
 export class DensityCurve {
   private svg: d3.Selection<SVGSVGElement, unknown, HTMLElement, any>;

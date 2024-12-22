@@ -1,7 +1,7 @@
-import { Context } from "./Context";
-import { Data, NodeTable } from "./Data";
-import { Names } from "./Names";
-import { Graph } from "./Graph/Basic/Graph";
+import { Context } from "../Context";
+import { Data, NodeTable } from "../Data";
+import { Names } from "../Names";
+import { Graph } from "../GraphView/Basic/Graph";
 
 export class ParamsExplorer {
   private sidePanelContent: HTMLElement;

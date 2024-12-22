@@ -1,6 +1,6 @@
 import { AdjacencyTable, Data } from "./Data";
 import PriorityQueue from "priorityqueuejs";
-import { Graph } from "./Graph/Basic/Graph";
+import { Graph } from "./GraphView/Basic/Graph";
 
 export type ShortestPathTable = {
   [source_name: string]: {

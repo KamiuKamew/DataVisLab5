@@ -1,5 +1,5 @@
-import { Context } from "./Context";
-import { Names } from "./Names";
+import { Context } from "../Context";
+import { Names } from "../Names";
 
 export class LeftSidePanel {
   private tabButtons: NodeListOf<Element>;

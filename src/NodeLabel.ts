@@ -97,7 +97,7 @@ export class NodeLabel {
       const labelText = d.label || "Label";
       const textElement = g.append("text").text(labelText).style("font-size", "12px");
 
-      const bbox = textElement.node().getBBox(); // 获取文本的边界框
+      const bbox = textElement.node()!.getBBox(); // 获取文本的边界框
       const newLabel = { x: initialX, y: initialY, width: bbox.width, height: bbox.height };
 
       // 删除临时文本节点

@@ -140,8 +140,14 @@ class ColorLegend {
 export { ColorLegend };
 
 // 设置颜色映射
-const nodeColorScale = d3.scaleLinear().domain([0, 1]).range(["blue", "red"]);
-const edgeColorScale = d3.scaleLinear().domain([0, 1]).range(["green", "yellow"]);
+const nodeColorScale = d3
+  .scaleLinear()
+  .domain([0, 1])
+  .range(["blue", "red"] as any);
+const edgeColorScale = d3
+  .scaleLinear()
+  .domain([0, 1])
+  .range(["green", "yellow"] as any);
 
 // 创建ColorLegend实例
 const nodeLegend = new ColorLegend("svg", "node", nodeColorScale, {

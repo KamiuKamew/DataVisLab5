@@ -1,5 +1,5 @@
 import * as d3 from "d3";
-import { ShortestPath, ShortestPathTable } from "./ShortestPath";
+import { ShortestPath, ShortestPathTable } from "../ShortestPath";
 
 export class HeatMap {
   private svg: d3.Selection<SVGSVGElement, unknown, HTMLElement, any>;
