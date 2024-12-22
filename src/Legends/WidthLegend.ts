@@ -33,7 +33,7 @@ class WidthLegend {
       .append("g")
       .attr("transform", `translate(${this.margin.left}, ${this.margin.top})`);
 
-    const widthBarHeight = 10;
+    const widthBarHeight = this.widthScale.range()[1];
     const widthBarMaxWidth = this.legendWidth - 30;
 
     // 直角梯形
@@ -42,7 +42,8 @@ class WidthLegend {
       .attr("transform", "translate(0, 20)")
       .append("polygon")
       .attr("points", this.getTrapezoidPoints(widthBarMaxWidth, widthBarHeight))
-      .style("fill", `url(#${this.getWidthGradientId()})`);
+      .style("fill", "#ffd")
+      .style("stroke", "#000");
 
     // 坐标轴条
     legendGroup
@@ -75,13 +76,12 @@ class WidthLegend {
 
   // 获取梯形的点坐标
   private getTrapezoidPoints(width: number, height: number): string {
-    const topWidth = width * 0.5; // 上边宽度为最大宽度的50%
-    const bottomWidth = width; // 下边宽度为最大宽度
+    const [min, max] = this.widthScale.range();
     const points = [
-      `0,0`, // 左上角
-      `${topWidth},0`, // 右上角
-      `${bottomWidth},${height}`, // 右下角
-      `0,${height}`, // 左下角
+      `0,${10 - height}`, // 左上角
+      `${width},${10 - min}`, // 右上角
+      `${width},${10}`, // 右下角
+      `0,${10}`, // 左下角
     ];
     return points.join(" ");
   }
@@ -96,20 +96,23 @@ class WidthLegend {
     legendGroup: d3.Selection<SVGGElement, unknown, HTMLElement, any>,
     widthBarMaxWidth: number
   ): void {
+    const [min, max] = this.widthScale.range();
     // 左右两个圆点表示最小和最大宽度
     legendGroup
       .append("circle")
       .attr("cx", -10)
-      .attr("cy", 25)
-      .attr("r", 7)
-      .style("fill", this.widthScale(0));
+      .attr("cy", 25 - max / 4)
+      .attr("r", max / 2)
+      .style("fill", "#ffd")
+      .style("stroke", "#000");
 
     legendGroup
       .append("circle")
       .attr("cx", widthBarMaxWidth + 10)
-      .attr("cy", 25)
-      .attr("r", 7)
-      .style("fill", this.widthScale(1));
+      .attr("cy", 25 - min / 4)
+      .attr("r", min / 2)
+      .style("fill", "#ffd")
+      .style("stroke", "#000");
   }
 
   // 绘制边宽度图例
@@ -117,22 +120,25 @@ class WidthLegend {
     legendGroup: d3.Selection<SVGGElement, unknown, HTMLElement, any>,
     widthBarMaxWidth: number
   ): void {
+    const [min, max] = this.widthScale.range();
     // 左右两条竖线表示最小和最大宽度
     legendGroup
       .append("rect")
-      .attr("x", -12)
-      .attr("y", 15)
-      .attr("width", 4)
+      .attr("x", -20)
+      .attr("y", 10)
+      .attr("width", max)
       .attr("height", 20)
-      .style("fill", this.widthScale(0));
+      .style("fill", "#ffd")
+      .style("stroke", "#000");
 
     legendGroup
       .append("rect")
       .attr("x", widthBarMaxWidth + 8)
-      .attr("y", 15)
-      .attr("width", 4)
+      .attr("y", 10)
+      .attr("width", min)
       .attr("height", 20)
-      .style("fill", this.widthScale(1));
+      .style("fill", "#ffd")
+      .style("stroke", "#000");
   }
 
   // 创建渐变定义
@@ -154,7 +160,7 @@ class WidthLegend {
 export { WidthLegend };
 
 // 设置宽度映射
-const nodeWidthScale = d3.scaleLinear().domain([0, 1]).range([5, 40]);
+const nodeWidthScale = d3.scaleLinear().domain([0, 1]).range([5, 20]);
 const edgeWidthScale = d3.scaleLinear().domain([0, 1]).range([2, 20]);
 
 // 创建WidthLegend实例

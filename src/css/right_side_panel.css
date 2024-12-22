@@ -28,6 +28,10 @@ body {
   margin: 10px;
   cursor: pointer;
   transition: transform 0.3s ease-in-out;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #aaa;
 }
 
 /* 侧边栏展开后的内容样式 */
@@ -73,20 +77,4 @@ body {
   align-items: flex-end;
   justify-content: flex-start;
   gap: 10px;
-}
-
-.sidebar-group-1 {
-  background-color: rgba(114, 242, 255, 0.5);
-}
-
-.sidebar-group-2 {
-  background-color: rgba(255, 111, 0, 0.5);
-}
-
-.sidebar-group-3 {
-  background-color: #4caf50;
-}
-
-.sidebar-group-4 {
-  background-color: #9c27b0;
 }
