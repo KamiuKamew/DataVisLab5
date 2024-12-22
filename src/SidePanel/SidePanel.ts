@@ -197,7 +197,9 @@ export class RightSidePanel {
     this.buttons.forEach(({ button, sidebar }) => {
       button.addEventListener("click", () => {
         console.log(sidebar.style.display);
-        sidebar.style.display = sidebar.style.display === "block" ? "none" : "block";
+        const display = (sidebar.style.display =
+          sidebar.style.display === "block" ? "none" : "block");
+        if (display === "block") d3.select(sidebar).raise();
       });
     });
   }
