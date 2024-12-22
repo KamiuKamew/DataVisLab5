@@ -174,8 +174,6 @@ export class RightSidePanel {
   private sidebar_ids = [
     { button_id: "sidebarButton1", sidebar_id: "sidebar1", dragger_id: "dragger1" },
     { button_id: "sidebarButton2", sidebar_id: "sidebar2", dragger_id: "dragger2" },
-    { button_id: "sidebarButton3", sidebar_id: "sidebar3", dragger_id: "dragger3" },
-    { button_id: "sidebarButton4", sidebar_id: "sidebar4", dragger_id: "dragger4" },
   ];
   private buttons: { button: HTMLElement; sidebar: HTMLElement }[];
 

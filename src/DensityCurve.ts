@@ -16,7 +16,7 @@ export class DensityCurve {
     this.shortestPath = shortestPath;
 
     const bbox = this.svg.node()?.getBoundingClientRect();
-    this.width = (bbox?.width || 800) - this.margin.left - this.margin.right - 500;
+    this.width = (bbox?.width || 800) - this.margin.left - this.margin.right - 200;
     this.height = (bbox?.height || 500) - this.margin.top - this.margin.bottom - 100;
 
     this.svg.selectAll("*").remove();

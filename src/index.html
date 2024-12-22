@@ -50,14 +50,16 @@
     <div class="button-container">
       <div class="sidebar-button sidebar-group-1" id="sidebarButton1"></div>
       <div class="sidebar-button sidebar-group-2" id="sidebarButton2"></div>
-      <div class="sidebar-button sidebar-group-3" id="sidebarButton3"></div>
-      <div class="sidebar-button sidebar-group-4" id="sidebarButton4"></div>
     </div>
 
     <!-- 侧边栏内容 -->
     <div class="sidebars-container">
       <div class="sidebar sidebar-group-1" id="sidebar1">
         <div class="dragger" id="dragger1"></div>
+        <div class="sidebar-title" style="padding-left: 30px;">
+          <h2>客流密度-里程图</h2>
+          <p>x=a到x=b之间的面积S表示平均每年有S万人次乘坐火车的里程(km)在a与b之间。</p>
+        </div>
         <div class="sidebar-content">
           <svg id="densityChart" style="width: 100%; height: 400px;"></svg>
         </div>
@@ -65,46 +67,20 @@
 
       <div class="sidebar sidebar-group-2" id="sidebar2">
         <div class="dragger" id="dragger2"></div>
+        <div class="sidebar-title" style="padding-left: 30px;">
+          <h2></h2>
+          <p>x=a到x=b之间的面积S表示平均每年有S万人次乘坐火车的里程(km)在a与b之间。</p>
+        </div>
         <div class="sidebar-content">
           <svg id="heatMap" style="width: 100%; height: 700px;"></svg>
         </div>
       </div>
 
-      <div class="sidebar sidebar-group-3" id="sidebar3">
-        <div class="dragger" id="dragger3"></div>
-        <div class="sidebar-content">
-          <img
-            src="https://via.placeholder.com/150/ff5722"
-            alt="Image"
-            style="width: 100%; height: auto"
-          />
-        </div>
-      </div>
-
-      <div class="sidebar sidebar-group-4" id="sidebar4">
-        <div class="dragger" id="dragger4"></div>
-        <div class="sidebar-content">
-          <table border="1" width="100%">
-            <tr>
-              <th>产品</th>
-              <th>价格</th>
-            </tr>
-            <tr>
-              <td>产品A</td>
-              <td>￥100</td>
-            </tr>
-            <tr>
-              <td>产品B</td>
-              <td>￥200</td>
-            </tr>
-          </table>
-        </div>
-      </div>
-
-
       <script src="https://d3js.org/d3.v7.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.0.0/dist/topojson-client.min.js"></script>
   
       <script src="./Context.ts" type="module"></script>
+      <script src="./ColorLegend.ts" type="module"></script>
+      <script src="./WidthLegend.ts" type="module"></script>
   </body>
 </html>
