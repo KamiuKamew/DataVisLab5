@@ -34,7 +34,7 @@ body {
 .sidebar {
   position: absolute;
   right: 70px; /* 让侧边栏显示在按钮左边 */
-  width: 400px;
+  width: 700px;
   background-color: white;
   box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
   border: 1px solid #ddd;

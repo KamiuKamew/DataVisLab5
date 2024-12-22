@@ -17,8 +17,8 @@ export class HeatMap {
 
     // 动态获取 SVG 容器的宽高
     const bbox = this.svg.node()?.getBoundingClientRect();
-    this.width = (bbox?.width || 800) - this.margin.left - this.margin.right - 400;
-    this.height = (bbox?.height || 500) - this.margin.top - this.margin.bottom - 100;
+    this.width = (bbox?.width || 800) - this.margin.left - this.margin.right - 100;
+    this.height = (bbox?.height || 500) - this.margin.top - this.margin.bottom + 200;
 
     // Clear SVG for new rendering
     this.svg.selectAll("*").remove();
