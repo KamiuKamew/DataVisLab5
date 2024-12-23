@@ -328,11 +328,6 @@ export class ForceSimulator {
   }
 
   private dragEnded(event: d3.D3DragEvent<SVGCircleElement, Node, Node>): void {
-    console.log(
-      "[forceSimulator] drag ended: ",
-      this.draggedNode,
-      this.findNodeUnderPlace(event.x, event.y)
-    );
     if (this.draggedNode)
       // this.controller.getCanvasEventAnalyst().onDragEnd(event, this.draggedNode);
       this.canvasEventManager.trigger("NodeDragEnd", {
@@ -373,7 +368,6 @@ export class ForceSimulator {
         });
     });
     passByEdgesId.forEach((edgeId) => {
-      console.log(`#edge-${edgeId}`);
       d3.select(`#edge-${edgeId}`)
         .attr("stroke", "red")
         .on("mouseover", (event, d: any) => {

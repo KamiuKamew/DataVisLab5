@@ -54,7 +54,6 @@ export class ParamsExplorer {
     parentKey: string = ""
   ) {
     Object.entries(nodeParams).forEach(([key, value]) => {
-      console.log(nodeParams, key, value);
       const fullKey = parentKey ? `${parentKey}.${key}` : key; // 处理嵌套字段的 key（用于唯一标识）
 
       let label = document.createElement("label");

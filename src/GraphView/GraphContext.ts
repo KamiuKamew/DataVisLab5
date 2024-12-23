@@ -197,11 +197,6 @@ export class GraphContext {
     this.svg.call(this.zoom.transform, d3.zoomTransform(this.svg.node()));
   }
 
-  public renderShorestPath(pathInfo: Path): void {
-    console.log("pathInfo", pathInfo);
-    this.simulator!.renderTrainLine(pathInfo.params.passByNodesId, pathInfo.params.passByEdgesId);
-  }
-
   exploreParams = (id: string) => this.ctx.exploreParams(id);
   setNodeFirst = (nodeId: string) => this.ctx.choosed.setNodeFirst(nodeId);
   setNodeSecond = (nodeId: string) => this.ctx.choosed.setNodeSecond(nodeId);
@@ -210,5 +205,7 @@ export class GraphContext {
     this.simulator!.onNodeFirstChange(oldNodeId, newNodeId);
   onNodeSecondChange = (oldNodeId: string | null, newNodeId: string | null) =>
     this.simulator!.onNodeSecondChange(oldNodeId, newNodeId);
+  renderShorestPath = (pathInfo: Path) =>
+    this.simulator!.renderTrainLine(pathInfo.params.passByNodesId, pathInfo.params.passByEdgesId);
   clearTrainLine = () => this.simulator!.clearTrainLine();
 }
