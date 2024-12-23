@@ -2,28 +2,41 @@ import * as d3 from "d3";
 import { ShortestPath } from "../ShortestPath";
 
 export class DensityCurve {
-  private svg: d3.Selection<SVGSVGElement, unknown, HTMLElement, any>;
-  private shortestPath: ShortestPath;
   private margin = { top: 20, right: 30, bottom: 30, left: 40 };
   private width: number;
   private height: number;
 
+  private g: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
+  private gCurve: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
+  private gxAxis: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
+  private gyAxis: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
+  private gPath: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
+  private gBalls: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
+  private gPachinko: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
+  private gInfinity: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
+
   constructor(
-    svg: d3.Selection<SVGSVGElement, unknown, HTMLElement, any>,
-    shortestPath: ShortestPath
+    private svg: d3.Selection<SVGSVGElement, unknown, HTMLElement, any>,
+    private shortestPath: ShortestPath
   ) {
-    this.svg = svg;
-    this.shortestPath = shortestPath;
+    this.svg.selectAll("*").remove();
+
+    this.g = this.svg.append("g").attr("class", "g");
+    this.gCurve = this.g.append("g").attr("class", "curve");
+    this.gxAxis = this.gCurve.append("g").attr("class", "x-axis");
+    this.gyAxis = this.gCurve.append("g").attr("class", "y-axis");
+    this.gPath = this.gCurve.append("g").attr("class", "path");
+    this.gBalls = this.g.append("g").attr("class", "balls");
+    this.gPachinko = this.gBalls.append("g").attr("class", "pachinko-balls");
+    this.gInfinity = this.gBalls.append("g").attr("class", "infinity-balls");
 
     const bbox = this.svg.node()?.getBoundingClientRect();
     this.width = (bbox?.width || 800) - this.margin.left - this.margin.right - 200;
     this.height = (bbox?.height || 500) - this.margin.top - this.margin.bottom - 100;
-
-    this.svg.selectAll("*").remove();
   }
 
   public render(paramId: number): void {
-    const data: number[] = this.extractParamData(paramId);
+    const data: { id: string; value: number }[] = this.extractParamData(paramId);
     const infinityCount = this.extractInfinityCount(paramId);
 
     if (data.length === 0) {
@@ -31,15 +44,16 @@ export class DensityCurve {
       return;
     }
 
+    // Scale definitions
     const x = d3
       .scaleLinear()
-      .domain([d3.min(data) as number, d3.max(data) as number])
+      .domain([d3.min(data, (d) => d.value) as number, d3.max(data, (d) => d.value) as number])
       .range([0, this.width]);
 
     const density = d3
       .histogram()
       .domain(x.domain() as [number, number])
-      .thresholds(x.ticks(40))(data)
+      .thresholds(x.ticks(40))(data.map((d) => d.value))
       .map((bin) => ({
         x0: bin.x0 as number,
         x1: bin.x1 as number,
@@ -57,34 +71,51 @@ export class DensityCurve {
       .y((d) => y(d.density))
       .curve(d3.curveBasis);
 
-    const g = this.svg
-      .append("g")
-      .attr("transform", `translate(${this.margin.left}, ${this.margin.top})`);
+    this.g.attr("transform", `translate(${this.margin.left}, ${this.margin.top})`);
 
-    // Add x-axis
-    g.append("g").attr("transform", `translate(0, ${this.height})`).call(d3.axisBottom(x));
+    this.gxAxis
+      .attr("transform", `translate(0, ${this.height})`)
+      .transition()
+      .duration(1000)
+      .call(
+        d3.axisBottom(x).tickSizeOuter(0) // 保持轴外刻度不变
+      )
+      .selection() // 返回选择集，避免出现默认的淡入效果
+      .attr("opacity", 1); // 确保透明度保持不变
 
-    // Add y-axis
-    g.append("g").call(d3.axisLeft(y));
+    this.gyAxis
+      .transition()
+      .duration(1000)
+      .call(
+        d3.axisLeft(y).tickSizeOuter(0) // 保持轴外刻度不变
+      )
+      .selection()
+      .attr("opacity", 1); // 确保透明度保持不变
 
-    // Add line path
-    g.append("path")
-      .datum(density)
-      .attr("fill", "none")
-      .attr("stroke", "steelblue")
-      .attr("stroke-width", 2)
-      .attr("d", line);
+    // Update line path with animation
+    const linePath = this.gPath.select("path");
 
-    // Add Pachinko effect
-    this.addPachinkoEffect(g, data, x, y);
+    if (linePath.empty()) {
+      // If path doesn't exist, append a new one
+      this.gPath
+        .append("path")
+        .datum(density)
+        .attr("fill", "none")
+        .attr("stroke", "steelblue")
+        .attr("stroke-width", 2)
+        .attr("d", line); // Initial render
+    } else {
+      // Update existing path with transition
+      linePath.datum(density).transition().duration(1000).attr("d", line);
+    }
 
-    // Add Infinity column
-    this.addInfinityColumn(infinityCount);
+    // Update balls
+    this.updateBalls(data, infinityCount, x, y);
   }
 
-  private addPachinkoEffect(
-    g: d3.Selection<SVGGElement, unknown, HTMLElement, any>,
-    data: number[],
+  private updateBalls(
+    data: { id: string; value: number }[],
+    infinityCount: number,
     x: d3.ScaleLinear<number, number, never>,
     y: d3.ScaleLinear<number, number, never>
   ): void {
@@ -92,60 +123,73 @@ export class DensityCurve {
     const dodge = this.createDodger(radius * 2 + 1);
     const height = this.height;
 
-    const balls = g.append("g").attr("class", "pachinko-balls");
-
-    data.forEach((value) => {
-      const cx = x(value);
-      const cy = height - dodge(cx) - radius - 1;
-
-      if (cy < this.margin.top) return;
-
-      balls
-        .append("circle")
-        .attr("cx", cx)
-        .attr("cy", -50) // Initial position above the chart
-        .attr("r", radius)
-        .attr("fill", "gray")
-        .attr("cy", cy); // Final position calculated by dodge
-    });
-  }
-
-  private addInfinityColumn(infinityCount: number): void {
-    const columnX = this.width + this.margin.right + 50; // 将柱状区域放在密度曲线的右侧
-    const columnWidth = 80; // 柱状区域宽度
-    const columnHeight = this.height; // 柱状区域高度
-    const radius = 1; // 小球半径
-
-    const rows = Math.floor(columnWidth / (2 * radius + 1)); // 每行最多容纳的小球数
-    const maxRows = Math.floor(columnHeight / (2 * radius + 1)); // 最多容纳的行数
-    const totalCapacity = rows * maxRows; // 容器最多可容纳的小球数
+    // Calculate Infinity column layout
+    const columnX = this.width + this.margin.right + 50; // Infinity column X
+    const columnWidth = 80; // Column width
+    const columnHeight = this.height; // Column height
+    const rows = Math.floor(columnWidth / (2 * radius + 1)); // Balls per row
+    const maxRows = Math.floor(columnHeight / (2 * radius + 1)); // Max rows
+    const totalCapacity = rows * maxRows; // Max capacity
 
     if (infinityCount > totalCapacity) {
       console.warn("Infinity count exceeds column capacity. Some values will not be displayed.");
-      infinityCount = totalCapacity; // 限制小球数量
+      infinityCount = totalCapacity;
     }
 
-    const column = this.svg
-      .append("g")
-      .attr("transform", `translate(${columnX}, ${this.margin.top})`);
+    const infinityBalls = Array.from({ length: infinityCount }, (_, i) => {
+      const row = Math.floor(i / rows);
+      const col = i % rows;
 
-    // 使用自下向上密集排布的小球
-    for (let i = 0; i < infinityCount; i++) {
-      const row = Math.floor(i / rows); // 当前小球所在行
-      const col = i % rows; // 当前小球所在列
+      return {
+        id: `infinity-${i}`,
+        cx: columnX - columnWidth / 2 + radius + col * (2 * radius + 1) + 10,
+        cy: columnHeight - radius - row * (2 * radius + 1) - 1,
+      };
+    });
 
-      const cx = -columnWidth / 2 + radius + col * (2 * radius + 1) + 10; // 小球水平位置
-      const cy = columnHeight - radius - row * (2 * radius + 1) - 1; // 小球垂直位置，从下向上堆积
+    // Merge Pachinko and Infinity data
+    const mergedData = [
+      ...data.map((d) => ({
+        id: d.id,
+        cx: x(d.value),
+        cy: height - dodge(x(d.value)) - radius - 1,
+      })),
+      ...infinityBalls,
+    ];
 
-      // 添加小球
-      column
-        .append("circle")
-        .attr("cx", cx)
-        .attr("cy", columnHeight + 50) // 初始位置（柱状区域底部外）
-        .attr("r", radius)
-        .attr("fill", "gray")
-        .attr("cy", cy); // 最终位置根据排列计算
-    }
+    // Bind data to circles
+    const ballsGroup = this.svg.select(".balls");
+    const circles = ballsGroup
+      .selectAll<SVGCircleElement, { id: string; cx: number; cy: number }>("circle")
+      .data(mergedData, (d) => d.id); // Use id as key for data binding
+
+    // ENTER: Add new balls
+    circles
+      .enter()
+      .append("circle")
+      .attr("r", radius)
+      .attr("fill", "gray")
+      .attr("cx", (d) => d.cx) // Initial position
+      .attr("cy", -50) // Start above the chart
+      .transition()
+      .duration(1000)
+      .attr("cx", (d) => d.cx) // Move to final position
+      .attr("cy", (d) => d.cy);
+
+    // UPDATE: Move existing balls
+    circles
+      .transition()
+      .duration(1000)
+      .attr("cx", (d) => d.cx) // Update position
+      .attr("cy", (d) => d.cy);
+
+    // EXIT: Remove old balls
+    circles
+      .exit()
+      .transition()
+      .duration(1000)
+      .attr("cy", this.height + 50) // Exit below the chart
+      .remove();
   }
 
   private createDodger(radius: number) {
@@ -176,21 +220,26 @@ export class DensityCurve {
   }
 
   public clear(): void {
-    this.svg.selectAll("*").remove();
+    // this.gxAxis.selectAll("*").remove();
+    // this.gyAxis.selectAll("*").remove();
+    // this.gPath.selectAll("*").remove();
+    // this.gPachinko.selectAll("*").remove();
+    // this.gInfinity.selectAll("*").remove();
   }
 
-  private extractParamData(paramId: number): number[] {
-    const result: number[] = [];
+  private extractParamData(paramId: number): { id: string; value: number }[] {
+    const result: { id: string; value: number }[] = [];
 
     for (const source in this.shortestPath.shortestPathTable) {
       for (const target in this.shortestPath.shortestPathTable[source]) {
         if (source === target) continue;
+        const id = this.shortestPath.shortestPathTable[source][target].id;
         const params = this.shortestPath.shortestPathTable[source][target].params;
 
         if (paramId >= 0 && paramId < params.length) {
-          const param = params[paramId]?.param;
-          if (typeof param === "number" && !isNaN(param) && param !== Infinity) {
-            result.push(param);
+          const value = params[paramId]?.param;
+          if (typeof value === "number" && !isNaN(value) && value !== Infinity) {
+            result.push({ id, value });
           }
         }
       }
