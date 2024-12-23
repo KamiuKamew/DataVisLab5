@@ -1,16 +1,17 @@
 import * as d3 from "d3";
 import { ShortestPath, ShortestPathTable } from "../ShortestPath";
+import { Context } from "../Context";
+import { Graph } from "../GraphView/Basic/Graph";
 
 export class HeatMap {
-  private svg: d3.Selection<SVGSVGElement, unknown, HTMLElement, any>;
-  private shortestPath: ShortestPath;
   private margin = { top: 20, right: 30, bottom: 30, left: 40 };
   private width: number;
   private height: number;
 
   constructor(
-    svg: d3.Selection<SVGSVGElement, unknown, HTMLElement, any>,
-    shortestPath: ShortestPath
+    private ctx: Context,
+    private svg: d3.Selection<SVGSVGElement, unknown, HTMLElement, any>,
+    private shortestPath: ShortestPath
   ) {
     this.svg = svg;
     this.shortestPath = shortestPath;
@@ -41,7 +42,6 @@ export class HeatMap {
 
     // Set up scales
     const xScale = d3.scaleBand().domain(sources).range([0, this.width]).padding(0.1);
-
     const yScale = d3.scaleBand().domain(targetArray).range([0, this.height]).padding(0.1);
 
     // Flatten the data into an array for easier mapping
@@ -77,7 +77,15 @@ export class HeatMap {
       .attr("width", xScale.bandwidth())
       .attr("height", yScale.bandwidth())
       .attr("fill", (d) => (d.param === Infinity ? "black" : colorScale(d.param)))
-      .attr("class", (d) => `cell-${d.source}-${d.target}`.replace(/\s+/g, "-"));
+      .attr("class", (d) => `cell-${d.source}-${d.target}`.replace(/\s+/g, "-"))
+      .on("click", (event, d) => {
+        // Trigger setPath with appropriate parameters
+        this.ctx.choosed.setPath({
+          id: Graph.getEdgeId(d.source, d.target),
+          name: Graph.getEdgeId(d.source, d.target),
+          params: this.ctx.shortestPath.get(d.source, d.target, 0),
+        });
+      }); // Add click event listener
 
     // Add axes
     const xAxis = d3.axisBottom(xScale);
