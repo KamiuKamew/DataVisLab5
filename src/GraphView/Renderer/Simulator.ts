@@ -2,7 +2,7 @@ import * as d3 from "d3";
 import { Graph, Node, Edge } from "../Basic/Graph";
 import { CanvasEventManager } from "./EventManager";
 import { GraphEventManager } from "../Basic/EventManager";
-import { Names } from "../../Names";
+import { Names } from "../../Global/Names";
 import { GraphContext } from "../GraphContext";
 
 // 定义常量
@@ -21,9 +21,6 @@ export class ForceSimulator {
 
   private draggedNode: Node | null = null; // 当前拖拽的节点
   private dragTarget: { x: number; y: number } | null = null; // 鼠标拖拽目标位置
-
-  private selectedNode1: string = ""; // 选中的第一个节点
-  private selectedNode2: string = ""; // 选中的第二个节点
 
   constructor(
     private ctx: GraphContext,
@@ -162,33 +159,11 @@ export class ForceSimulator {
       })
       .on("click", (event: MouseEvent, d: any) => {
         this.canvasEventManager.trigger("NodeClicked", { event, id: d._id });
-        this.ctx.exploreParams(Names.DataCategory_Station, d._id);
       })
       .on("mousedown", (event: MouseEvent, d: any) => {
-        if (event.button === 0) {
-          if (this.selectedNode1 === d._id) {
-            this.selectedNode1 = "";
-            d3.select(event.currentTarget as HTMLElement).attr("stroke", "black");
-          } else {
-            if (this.selectedNode1)
-              d3.select(`#node-${this.selectedNode1}`).attr("stroke", "black");
-            this.selectedNode1 = d._id;
-            d3.select(event.currentTarget as HTMLElement).attr("stroke", "red");
-          }
-        } else if (event.button === 2) {
-          if (this.selectedNode2 === d._id) {
-            this.selectedNode2 = "";
-            d3.select(event.currentTarget as HTMLElement).attr("stroke", "black");
-          } else {
-            if (this.selectedNode2)
-              d3.select(`#node-${this.selectedNode2}`).attr("stroke", "black");
-            this.selectedNode2 = d._id;
-            d3.select(event.currentTarget as HTMLElement).attr("stroke", "yellow");
-          }
-        }
-        this.ctx.resetShorestPath();
-        if (this.selectedNode1 && this.selectedNode2)
-          this.ctx.renderShorestPath(this.selectedNode1, this.selectedNode2);
+        const nodeId = d._id;
+        if (event.button === 0) this.ctx.setNodeFirst(nodeId);
+        else if (event.button === 2) this.ctx.setNodeSecond(nodeId);
       })
       .call((enter) => {
         this.applyDragBehavior(enter);
@@ -212,6 +187,16 @@ export class ForceSimulator {
 
     // 更新节点位置
     node.attr("transform", (d) => `translate(${d.x}, ${d.y})`);
+  }
+
+  onNodeFirstChange(oldNodeId: string | null, newNodeId: string | null): void {
+    if (oldNodeId) d3.select(`#node-${oldNodeId}`).attr("stroke", "black");
+    if (newNodeId) d3.select(`#node-${newNodeId}`).attr("stroke", "red");
+  }
+
+  onNodeSecondChange(oldNodeId: string | null, newNodeId: string | null): void {
+    if (oldNodeId) d3.select(`#node-${oldNodeId}`).attr("stroke", "black");
+    if (newNodeId) d3.select(`#node-${newNodeId}`).attr("stroke", "yellow");
   }
 
   /**
@@ -249,7 +234,7 @@ export class ForceSimulator {
         // 阻止事件传播
         event.stopPropagation();
         console.log("[ForceSimulator] clicked line: ", d);
-        this.ctx.exploreParams(Names.DataCategory_Track, d._id);
+        this.ctx.exploreParams(d._id);
       });
 
     edgePath.attr("d", (d) => {
@@ -277,7 +262,7 @@ export class ForceSimulator {
         // 阻止事件传播
         event.stopPropagation();
         console.log("[ForceSimulator] clicked line: ", d);
-        this.ctx.exploreParams(Names.DataCategory_Track, d._id);
+        this.ctx.exploreParams(d._id);
       });
 
     link.exit().remove();

@@ -1,6 +1,6 @@
 import * as d3 from "d3";
 import { Context } from "../Context";
-import { Names } from "../Names";
+import { Names } from "../Global/Names";
 
 export class LeftSidePanel {
   private tabButtons: NodeListOf<Element>;

@@ -1,7 +1,7 @@
 import * as d3 from "d3";
 import { Context } from "../Context";
-import { NodeTable } from "../Data";
-import { Names } from "../Names";
+import { NodeTable } from "../Global/Data";
+import { Names } from "../Global/Names";
 import { Graph } from "../GraphView/Basic/Graph";
 
 export class MapContext {
@@ -18,9 +18,6 @@ export class MapContext {
 
   public zoom: d3.ZoomBehavior<SVGSVGElement, unknown>;
   public projection: d3.GeoProjection;
-
-  private selectedNode1: string = "";
-  private selectedNode2: string = "";
 
   constructor(private ctx: Context) {
     this.svg = d3.select("svg");
@@ -66,9 +63,6 @@ export class MapContext {
     provinces.each((d: any) => {
       d.clicked = false;
     });
-
-    this.selectedNode1 = "";
-    this.selectedNode2 = "";
   }
 
   // 点击州时的缩放
@@ -193,7 +187,6 @@ export class MapContext {
         .attr("d", path as any)
         .attr("fill", "rgba(0, 0, 0, 0.2)")
         .attr("class", "province")
-        .attr(Names.DataCategory, Names.DataCategory_Province)
         .each((d: any) => {
           d.clicked = false;
         });
@@ -239,7 +232,7 @@ export class MapContext {
     // 绘制节点
     nodes
       .append("circle")
-      .attr("id", (d: any) => d[0]) // 设置节点的 id 属性
+      .attr("id", (d: any) => `node-${d[0]}`) // 设置节点的 id 属性
       .attr("r", 5 / transform.k) // 设置圆的半径
       .attr("fill", this.nodeColorEncoder()) // 设置圆的填充颜色
       .attr("stroke", "black") // 设置圆的边框颜色
@@ -253,29 +246,10 @@ export class MapContext {
         event.preventDefault();
         event.stopPropagation();
         console.log("[MapContext] clicked node: ", d);
-        if (event.button === 0) {
-          if (this.selectedNode1 === d[0]) {
-            this.selectedNode1 = "";
-            d3.select(event.currentTarget as HTMLElement).attr("stroke", "black");
-          } else {
-            if (this.selectedNode1) d3.select(`#${this.selectedNode1}`).attr("stroke", "black");
-            this.selectedNode1 = d[0];
-            d3.select(event.currentTarget as HTMLElement).attr("stroke", "red");
-          }
-        } else if (event.button === 2) {
-          if (this.selectedNode2 === d[0]) {
-            this.selectedNode2 = "";
-            d3.select(event.currentTarget as HTMLElement).attr("stroke", "black");
-          } else {
-            if (this.selectedNode2) d3.select(`#${this.selectedNode2}`).attr("stroke", "black");
-            this.selectedNode2 = d[0];
-            d3.select(event.currentTarget as HTMLElement).attr("stroke", "yellow");
-          }
-        }
-        this.ctx.exploreParams(Names.DataCategory_Station, d[0]);
-        this.ctx.resetShorestPath();
-        if (this.selectedNode1 && this.selectedNode2)
-          this.ctx.renderShorestPath(this.selectedNode1, this.selectedNode2);
+
+        const nodeId = d[0];
+        if (event.button === 0) this.ctx.choosed.setNodeFirst(nodeId);
+        else if (event.button === 2) this.ctx.choosed.setNodeSecond(nodeId);
       });
 
     // 创建标签
@@ -311,6 +285,16 @@ export class MapContext {
     //       .attr("height", 20);
     //     d3.select(this).text(d[1]["name"]);
     //   });
+  }
+
+  onNodeFirstChange(oldNodeId: string | null, newNodeId: string | null): void {
+    if (oldNodeId) d3.select(`#node-${oldNodeId}`).attr("stroke", "black");
+    if (newNodeId) d3.select(`#node-${newNodeId}`).attr("stroke", "red");
+  }
+
+  onNodeSecondChange(oldNodeId: string | null, newNodeId: string | null): void {
+    if (oldNodeId) d3.select(`#node-${oldNodeId}`).attr("stroke", "black");
+    if (newNodeId) d3.select(`#node-${newNodeId}`).attr("stroke", "yellow");
   }
 
   renderLines(): void {
@@ -366,7 +350,6 @@ export class MapContext {
       .attr("stroke-width", this.lineWidthEncoder(transform))
       .attr("fill", "none")
       .attr("opacity", 0.7)
-      .attr(Names.DataCategory, Names.DataCategory_Track)
       .on("mouseover", (event: MouseEvent, d: any) => {
         console.log("[MapContext] mouseover line: ", d);
       })
@@ -374,7 +357,8 @@ export class MapContext {
         // 阻止事件传播
         event.stopPropagation();
         console.log("[MapContext] clicked line: ", d);
-        this.ctx.exploreParams(Names.DataCategory_Track, d["id"]);
+        const edgeId = d["id"];
+        this.ctx.choosed.setEdge(edgeId);
       });
   }
 

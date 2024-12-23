@@ -5,6 +5,7 @@ import { Graph } from "./Basic/Graph";
 import { CanvasEventManager } from "./Renderer/EventManager";
 import { CanvasEventAnalyst } from "./Renderer/EventAnalyst";
 import { ForceSimulator } from "./Renderer/Simulator";
+import { Path } from "../Global/Choosed";
 
 export class GraphContext {
   private svg: d3.Selection<any, any, any, any>;
@@ -196,23 +197,18 @@ export class GraphContext {
     this.svg.call(this.zoom.transform, d3.zoomTransform(this.svg.node()));
   }
 
-  public exploreParams(dataCategory: string, id: string): void {
-    return this.ctx.exploreParams(dataCategory, id);
-  }
-
-  public renderShorestPath(sourceId: string, targetId: string): void {
-    this.ctx.renderShorestPath(sourceId, targetId);
-    const pathInfo = this.ctx.shortestPath.get(
-      sourceId,
-      targetId,
-      this.model == "distance" ? 1 : 0
-    );
+  public renderShorestPath(pathInfo: Path): void {
     console.log("pathInfo", pathInfo);
-    this.simulator!.renderTrainLine(pathInfo.passByNodesId, pathInfo.passByEdgesId);
+    this.simulator!.renderTrainLine(pathInfo.params.passByNodesId, pathInfo.params.passByEdgesId);
   }
 
-  resetShorestPath(): void {
-    this.ctx.resetShorestPath();
-    this.simulator!.clearTrainLine();
-  }
+  exploreParams = (id: string) => this.ctx.exploreParams(id);
+  setNodeFirst = (nodeId: string) => this.ctx.choosed.setNodeFirst(nodeId);
+  setNodeSecond = (nodeId: string) => this.ctx.choosed.setNodeSecond(nodeId);
+
+  onNodeFirstChange = (oldNodeId: string | null, newNodeId: string | null) =>
+    this.simulator!.onNodeFirstChange(oldNodeId, newNodeId);
+  onNodeSecondChange = (oldNodeId: string | null, newNodeId: string | null) =>
+    this.simulator!.onNodeSecondChange(oldNodeId, newNodeId);
+  clearTrainLine = () => this.simulator!.clearTrainLine();
 }

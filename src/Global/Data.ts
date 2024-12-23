@@ -1,5 +1,5 @@
 import * as d3 from "d3";
-import { Graph } from "./GraphView/Basic/Graph";
+import { Graph } from "../GraphView/Basic/Graph";
 
 export type NodeTable = {
   [id: string]: {

@@ -1,6 +1,6 @@
 import * as d3 from "d3";
 
-import { Data } from "./Data";
+import { Data } from "./Global/Data";
 import { GraphContext } from "./GraphView/GraphContext";
 import { MapContext } from "./MapView/MapContext";
 import { ParamsExplorer } from "./SidePanel/ParamsExplorer";
@@ -8,9 +8,12 @@ import { ShortestPath } from "./ShortestPath";
 import { LeftSidePanel, RightSidePanel, TopSidePanel } from "./SidePanel/SidePanel";
 import { DensityCurve } from "./SidePanel/DensityCurve";
 import { HeatMap } from "./SidePanel/HeatMap";
+import { Choosed, Path } from "./Global/Choosed";
+import { Graph } from "./GraphView/Basic/Graph";
 
 export class Context {
   data: Data;
+  choosed: Choosed;
   private paramsExporer: ParamsExplorer;
 
   private mapContext: MapContext;
@@ -26,9 +29,11 @@ export class Context {
   private heatMap!: HeatMap;
 
   private currentModel: "distance" | "time" = "distance"; // 默认显示距离模型
+  private currentView: "map" | "distance" | "time" = "map"; // 默认显示地图视图
 
   constructor() {
     this.data = new Data();
+    this.choosed = new Choosed(this);
     this.paramsExporer = new ParamsExplorer(this, this.data);
 
     this.mapContext = new MapContext(this);
@@ -59,6 +64,7 @@ export class Context {
   }
 
   onVievChange(view: "map" | "distance" | "time"): void {
+    this.currentView = view;
     if (view === "map") {
       this.renderMap();
     } else if (view === "distance") {
@@ -80,6 +86,38 @@ export class Context {
     this.rerenderHeatMap();
   }
 
+  onChoosedNodeFirstChange(oldNodeId: string | null, newNodeId: string | null): void {
+    console.log("[Context] onChoosedNodeFirstChange", oldNodeId, newNodeId);
+    if (newNodeId) this.exploreParams(newNodeId);
+    if (this.currentView === "map") this.mapContext.onNodeFirstChange(oldNodeId, newNodeId); // TODO
+  }
+
+  onChoosedNodeSecondChange(oldNodeId: string | null, newNodeId: string | null): void {
+    console.log("[Context] onChoosedNodeSecondChange", oldNodeId, newNodeId);
+    if (newNodeId) this.exploreParams(newNodeId);
+    if (this.currentView === "map") this.mapContext.onNodeSecondChange(oldNodeId, newNodeId);
+  }
+
+  onChoosedEdgeChange(oldEdgeId: string | null, newEdgeId: string | null): void {
+    console.log("[Context] onChoosedEdgeChange", oldEdgeId, newEdgeId);
+    if (newEdgeId) this.exploreParams(newEdgeId);
+  }
+
+  onChoosedPathChange(oldPath: Path | null, newPath: Path | null) {
+    console.log("[Context] onChoosedPathChange", oldPath, newPath);
+    this.heatMap.clearHighlight();
+    if (this.currentView === "time" || this.currentView === "distance")
+      this.graphContext.clearTrainLine();
+    if (newPath) {
+      const pathId = newPath.id;
+      const start = Graph.getSourceId(pathId);
+      const end = Graph.getTargetId(pathId);
+      this.heatMap.highlightCell(start, end);
+      if (this.currentView === "time" || this.currentView === "distance")
+        this.graphContext.renderShorestPath(newPath);
+    }
+  }
+
   private renderMap(): void {
     this.mapContext.clear();
     this.graphContext.clear();
@@ -94,9 +132,9 @@ export class Context {
     this.graphContext.render();
   }
 
-  exploreParams(dataCategory: string, id?: string): void {
+  exploreParams(id?: string): void {
     if (this.leftSidePanel.contentOnShow !== "params") this.leftSidePanel.changeToParamsView();
-    this.paramsExporer.explore(dataCategory, id);
+    this.paramsExporer.explore(id);
   }
 
   private recalculateShortestPath(): void {
@@ -118,14 +156,6 @@ export class Context {
     this.densityCurve.clear();
     const paramId = this.currentModel === "distance" ? 0 : 1;
     this.densityCurve.render(paramId);
-  }
-
-  renderShorestPath(start: string, end: string): void {
-    this.heatMap.highlightCell(start, end);
-  }
-
-  resetShorestPath(): void {
-    this.heatMap.clearHighlight();
   }
 }
 

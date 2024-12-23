@@ -1,6 +1,6 @@
 import { Context } from "../Context";
-import { Data, NodeTable } from "../Data";
-import { Names } from "../Names";
+import { Data, NodeTable } from "../Global/Data";
+import { Names } from "../Global/Names";
 import { Graph } from "../GraphView/Basic/Graph";
 
 export class ParamsExplorer {
@@ -12,7 +12,7 @@ export class ParamsExplorer {
     ) as HTMLElement;
   }
 
-  explore(dataCategory: string, id?: string) {
+  explore(id?: string) {
     if (typeof id !== "string") {
       console.warn("[ParamsExplorer] id: ", id);
       throw new Error("[ParamsExplorer] Invalid id");
@@ -21,13 +21,14 @@ export class ParamsExplorer {
     let targetParams: {
       [key: string]: any;
     };
-    if (dataCategory === Names.DataCategory_Station && id) targetParams = this.data.nodes()[id];
-    else if (dataCategory === Names.DataCategory_Track && id) {
-      const sourceId = Graph.getSourceId(id);
-      const targetId = Graph.getTargetId(id);
-      targetParams =
-        this.data.adjacencyTable()[sourceId][targetId] ??
-        this.data.adjacencyTable()[targetId][sourceId];
+    if (id) {
+      if (Graph.isEdgeId(id)) {
+        const sourceId = Graph.getSourceId(id);
+        const targetId = Graph.getTargetId(id);
+        targetParams =
+          this.data.adjacencyTable()[sourceId][targetId] ??
+          this.data.adjacencyTable()[targetId][sourceId];
+      } else targetParams = this.data.nodes()[id];
     } else {
       throw new Error("[ParamsExplorer] Invalid dataCategory or id");
     }
