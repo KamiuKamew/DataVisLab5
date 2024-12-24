@@ -25,7 +25,7 @@ export class LegendContext {
       .range(["steelblue", "tomato"] as any);
     const edgeColorScale = d3
       .scaleLinear()
-      .domain([0, 1])
+      .domain([10000, 160000])
       .range(["steelblue", "tomato"] as any);
 
     // 绘制节点颜色图例

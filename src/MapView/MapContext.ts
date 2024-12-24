@@ -104,7 +104,7 @@ export class MapContext {
     this.g.attr("transform", transform.toString());
 
     // 调整边界线的粗细
-    this.gMap.selectAll(".province").attr("stroke-width", 2 / transform.k);
+    this.gMap.selectAll(".province").attr("stroke-width", 0 / transform.k);
     this.gMap.selectAll(".state").attr("stroke-width", 0.5 / transform.k);
 
     // 调整节点大小，使其始终保持相同的视觉大小
@@ -133,6 +133,7 @@ export class MapContext {
   }
 
   public renderMap(): void {
+    const transform = d3.zoomTransform(this.svg.node());
     for (let i = 11; i <= 90; i++) {
       d3.json("./data/geometryProvince/" + i + ".json")
         .then((geoData: any) => {
@@ -151,8 +152,8 @@ export class MapContext {
             )
             .join("path")
             .attr("d", path as any)
-            .attr("stroke-width", 0.5)
-            .attr("fill", "rgba(0, 0, 0, 0.2)")
+            .attr("stroke-width", 0.5 / transform.k)
+            .attr("fill", "rgba(128, 128, 128, 0.2)")
             .attr("class", "state");
 
           counties.append("title").text((d: any) => d.properties.name);
@@ -184,7 +185,8 @@ export class MapContext {
         .join("path")
         .on("click", (event: MouseEvent, d: any) => this.clicked(event, d, path))
         .attr("d", path as any)
-        .attr("fill", "rgba(0, 0, 0, 0.2)")
+        .attr("fill", "rgba(128, 128, 128, 0.2)")
+        .attr("stroke-width", 0)
         .attr("class", "province")
         .each((d: any) => {
           d.clicked = false;
@@ -405,7 +407,10 @@ export class MapContext {
 
   lineColorEncoder(): (d: any, i: any) => string {
     // 定义一个颜色比例尺
-    const colorScale = d3.scaleLinear<string>().domain([0, 100]).range(["steelblue", "tomato"]);
+    const colorScale = d3
+      .scaleLinear<string>()
+      .domain([10000, 160000])
+      .range(["steelblue", "tomato"]);
 
     return (d: any) => {
       // 根据 trainShifts 返回相应的颜色

@@ -66,9 +66,8 @@ export class Data {
           this._nodes[id]["geo_info"] = geo;
         });
       }),
-
-      d3
-        .json(AdjacencyTableURL)
+    ]).then(() => {
+      d3.json(AdjacencyTableURL)
         .then((data_2: any) => {
           Object.entries(data_2).forEach(([source_name, targets]: [string, any]) => {
             if (this._adjacencyTable[source_name]) {
@@ -108,7 +107,14 @@ export class Data {
                       id: name,
                       name: name,
 
-                      trainShifts: trainShifts,
+                      trainShifts:
+                        (d3.min([trainShifts, 5]) + 1) *
+                        d3.min([
+                          (this._nodes[source_name].access_info +
+                            this._nodes[target_name].access_info) /
+                            2,
+                          31921.15,
+                        ]), // TODO
                       params: [0, 0, 0],
                     };
                   }
@@ -116,8 +122,8 @@ export class Data {
               }
             });
           });
-        }),
-    ]);
+        });
+    });
     console.log(this._nodes);
     console.log(this._adjacencyTable);
     this.loaded = true;

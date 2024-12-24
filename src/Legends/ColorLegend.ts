@@ -145,6 +145,7 @@ class ColorLegend {
     legendGroup: d3.Selection<SVGGElement, unknown, HTMLElement, any>,
     colorBarWidth: number
   ): void {
+    const [min, max] = this.colorScale.domain();
     // 左右两条竖线
     legendGroup
       .append("rect")
@@ -152,7 +153,7 @@ class ColorLegend {
       .attr("y", 15)
       .attr("width", 4)
       .attr("height", 20)
-      .style("fill", this.colorScale(0));
+      .style("fill", this.colorScale(min));
 
     legendGroup
       .append("rect")
@@ -160,7 +161,7 @@ class ColorLegend {
       .attr("y", 15)
       .attr("width", 4)
       .attr("height", 20)
-      .style("fill", this.colorScale(1));
+      .style("fill", this.colorScale(max));
   }
 
   // 创建渐变定义
