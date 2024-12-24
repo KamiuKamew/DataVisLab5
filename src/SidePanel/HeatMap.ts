@@ -30,96 +30,184 @@ export class HeatMap {
       .attr("transform", `translate(${this.margin.left}, ${this.margin.top + 80})`);
   }
 
-  g.selectAll("g.cell-container")
-  .data(flattenedData)
-  .enter()
-  .append("g")
-  .attr("class", (d) => `cell-container-${d.source}-${d.target}`.replace(/\s+/g, "-"))
-  .style("pointer-events", "none") // 禁止与鼠标交互
-  .each(function (d) {
-    const container = d3.select(this);
+  public render(paramId: number): void {
+    const data: ShortestPathTable = this.shortestPath.shortestPathTable;
 
-    // 背景 rect
-    container
+    // Get all unique source and target names
+    const sources = Object.keys(data);
+    const targets = new Set<string>();
+    sources.forEach((source) => {
+      Object.keys(data[source]).forEach((target) => targets.add(target));
+    });
+
+    const targetArray = Array.from(targets);
+
+    // Set up scales
+    const xScale = d3.scaleBand().domain(sources).range([0, this.width]).padding(0.1);
+    const yScale = d3.scaleBand().domain(targetArray).range([0, this.height]).padding(0.1);
+
+    // Flatten the data into an array for easier mapping
+    const flattenedData = [];
+    for (const source of sources) {
+      for (const target of targetArray) {
+        if (data[source] && data[source][target]) {
+          const param = data[source][target].params[paramId]?.param;
+          flattenedData.push({
+            source,
+            target,
+            param: param === undefined ? Infinity : param,
+          });
+        } else {
+          flattenedData.push({ source, target, param: Infinity });
+        }
+      }
+    }
+
+    // Determine color scale
+    const maxParam = d3.max(flattenedData, (d) => (d.param !== Infinity ? d.param : 0)) || 1;
+    const colorScale = d3.scaleSequential(d3.interpolateReds).domain([0, maxParam]);
+
+    // Draw the heatmap
+    const g = this.svg.select("g");
+
+    g.selectAll("rect")
+      .data(flattenedData)
+      .enter()
       .append("rect")
-      .attr("x", xScale(d.source)!)
-      .attr("y", yScale(d.target)!)
+      .attr("x", (d) => xScale(d.source)!)
+      .attr("y", (d) => yScale(d.target)!)
       .attr("width", xScale.bandwidth())
       .attr("height", yScale.bandwidth())
       .attr("fill", (d) => (d.param === Infinity ? "black" : colorScale(d.param)))
-      .style("opacity", 0); // 默认隐藏
+      .attr("class", (d) => `cell-${d.source}-${d.target}`.replace(/\s+/g, "-"))
+      .on("mouseenter", function (event, d) {
+        // 阻止默认事件
+        event.preventDefault();
+        // 阻止事件冒泡
+        event.stopPropagation();
 
-    // 背景 text
-    container
+        const cell = d3.select(this);
+
+        // 将当前元素移到最顶层
+        cell.raise();
+
+        // 放大格子
+        cell
+          .transition()
+          .duration(200)
+          .attr("transform", `scale(9)`)
+          .attr(
+            "transform-origin",
+            `${xScale(d.source)! + xScale.bandwidth() / 2}px ${
+              yScale(d.target)! + yScale.bandwidth() / 2
+            }px`
+          );
+
+        // 添加文本
+        g.append("text")
+          .attr("x", xScale(d.source)! + xScale.bandwidth() / 2)
+          .attr("y", yScale(d.target)! + yScale.bandwidth() / 2)
+          .attr("class", "cell-text")
+          .attr("text-anchor", "middle")
+          .attr("dominant-baseline", "central")
+          .style("font-size", "16px")
+          .style("fill", d.param < 2500 * 0.4 ? "black" : "white") // 根据条件动态设置颜色
+          .style("pointer-events", "none")
+          .selectAll("tspan") // 选择所有的 tspan 元素
+          .data([`${d.source}-${d.target}`, `${d.param.toFixed(1)} km`]) // 数据数组，每行一个字符串
+          .enter()
+          .append("tspan")
+          .attr("x", xScale(d.source)! + xScale.bandwidth() / 2) // 保持 x 坐标不变
+          .attr("y", yScale(d.target)! + yScale.bandwidth() / 2 - 5) // 第一行保持在中心，后续行逐行向下
+          .attr("dy", (d, i) => (i === 0 ? "0em" : "1.2em")) // 第一行保持在中心，后续行逐行向下
+          // 不允许选择文本
+          .style("user-select", "none")
+          .text((d) => d); // 设置 tspan 的文本
+      })
+      .on("mouseleave", function (event, d) {
+        const cell = d3.select(this);
+
+        // 恢复大小
+        cell
+          .transition()
+          .duration(200)
+          .attr("transform", "scale(1)")
+          .attr("stroke", "black")
+          .attr("stroke-width", "0");
+
+        // 移除文本
+        g.selectAll(".cell-text").remove();
+      })
+      .on("click", (event, d) => {
+        // Trigger setPath with appropriate parameters
+        this.ctx.choosed.setPath({
+          id: Graph.getEdgeId(d.source, d.target),
+          name: Graph.getEdgeId(d.source, d.target),
+          params: this.ctx.shortestPath.get(d.source, d.target, 0),
+        });
+      });
+
+    // Add axes
+    const xAxis = d3.axisBottom(xScale);
+    const yAxis = d3.axisLeft(yScale);
+
+    g.append("g")
+      .attr("transform", `translate(0, ${this.height})`)
+      .call(xAxis)
+      .selectAll("text")
+      .style("text-anchor", "end")
+      .attr("dx", "-0.8em")
+      .attr("dy", "-0.5em")
+      .attr("transform", "rotate(-90)");
+
+    g.append("g").call(yAxis);
+
+    // Add a color legend
+    const legendWidth = 200;
+    const legendHeight = 20;
+
+    // 添加图例容器
+    const legendSvg = this.svg
+      .append("g")
+      .attr("class", "legend")
+      .attr("transform", `translate(${this.margin.left}, 50)`);
+
+    // 添加图例文字说明
+    legendSvg
       .append("text")
-      .attr("x", xScale(d.source)! + xScale.bandwidth() / 2)
-      .attr("y", yScale(d.target)! + yScale.bandwidth() / 2)
-      .attr("class", "cell-text")
-      .attr("text-anchor", "middle")
-      .attr("dominant-baseline", "central")
-      .style("font-size", "16px")
-      .style("fill", "white")
-      .style("opacity", 0) // 默认隐藏
-      .text(`${d.source}-${d.target}`);
-  });
+      .attr("x", 0)
+      .attr("y", -10) // 文字位置在图例的上方
+      .style("font-size", "12px")
+      .style("font-weight", "bold")
+      .style("text-anchor", "start") // 左对齐
+      .text("颜色映射：里程数（单位：千米）");
 
-g.selectAll("rect.foreground")
-  .data(flattenedData)
-  .enter()
-  .append("rect")
-  .attr("class", (d) => `foreground-${d.source}-${d.target}`.replace(/\s+/g, "-"))
-  .attr("x", (d) => xScale(d.source)!)
-  .attr("y", (d) => yScale(d.target)!)
-  .attr("width", xScale.bandwidth())
-  .attr("height", yScale.bandwidth())
-  .attr("fill", (d) => (d.param === Infinity ? "black" : colorScale(d.param)))
-  .on("mouseenter", function (event, d) {
-    const container = g.select(`.cell-container-${d.source}-${d.target}`);
+    // 使用与 colorScale 一致的范围
+    const legendScale = d3.scaleLinear().domain(colorScale.domain()).range([0, legendWidth]);
 
-    // 将当前 g 移动到最顶层
-    container.raise();
+    const legendAxis = d3.axisBottom(legendScale).ticks(5);
 
-    // 显示并放大背景
-    container.select("rect")
-      .transition()
-      .duration(200)
-      .style("opacity", 1)
-      .attr("transform", `scale(1.5)`)
-      .attr(
-        "transform-origin",
-        `${xScale(d.source)! + xScale.bandwidth() / 2}px ${yScale(d.target)! + yScale.bandwidth() / 2}px`
-      );
+    // 创建多个渐变点
+    const numStops = 10; // 可以调整以增加或减少渐变的平滑度
+    const gradientStops = d3.range(0, 1 + 1e-6, 1 / (numStops - 1)).map((t) => ({
+      offset: `${t * 100}%`,
+      color: d3.interpolateReds(t), // 从 d3.interpolateReds 获取颜色
+    }));
 
-    container.select("text")
-      .transition()
-      .duration(200)
-      .style("opacity", 1)
-      .style("font-size", "20px");
-  })
-  .on("mouseleave", function (event, d) {
-    const container = g.select(`.cell-container-${d.source}-${d.target}`);
+    // 更新渐变定义
+    const legendGradient = legendSvg
+      .append("defs")
+      .append("linearGradient")
+      .attr("id", "legendGradient")
+      .attr("x1", "0%")
+      .attr("y1", "0%")
+      .attr("x2", "100%")
+      .attr("y2", "0%");
 
-    // 隐藏背景
-    container.select("rect")
-      .transition()
-      .duration(200)
-      .style("opacity", 0)
-      .attr("transform", `scale(1)`);
-
-    container.select("text")
-      .transition()
-      .duration(200)
-      .style("opacity", 0)
-      .style("font-size", "16px");
-  })
-  .on("click", (event, d) => {
-    this.ctx.choosed.setPath({
-      id: Graph.getEdgeId(d.source, d.target),
-      name: Graph.getEdgeId(d.source, d.target),
-      params: this.ctx.shortestPath.get(d.source, d.target, 0),
+    // 添加渐变的 stop 节点
+    gradientStops.forEach((stop) => {
+      legendGradient.append("stop").attr("offset", stop.offset).attr("stop-color", stop.color);
     });
-  });
-
 
     // 绘制图例条
     legendSvg
