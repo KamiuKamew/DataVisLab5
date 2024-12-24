@@ -504,15 +504,30 @@ export class MapContext {
   private rerenderLine(id: string): void {
     const transform = d3.zoomTransform(this.svg.node());
 
+    // 获取邻接表和对应的节点地理信息
     const adjacencyTable = this.ctx.data.adjacencyTable();
+    const nodes = this.ctx.data.nodes();
+
+    // 解析源和目标节点ID
     const sourceId = Graph.getSourceId(id);
     const targetId = Graph.getTargetId(id);
-    const lineData = adjacencyTable[sourceId][targetId] ?? adjacencyTable[targetId][sourceId];
+
+    // 获取线段数据
+    const lineData = adjacencyTable[sourceId]?.[targetId] || adjacencyTable[targetId]?.[sourceId];
     if (!lineData) {
       console.log(`[MapContext] Line with id ${id} not found.`);
       return;
     }
 
+    // 获取源和目标节点的地理信息
+    const sourceGeo = nodes[sourceId]?.geo_info;
+    const targetGeo = nodes[targetId]?.geo_info;
+    if (!sourceGeo || !targetGeo) {
+      console.log(`[MapContext] Geo info missing for line ${id}.`);
+      return;
+    }
+
+    // 创建路径生成器
     const lineGenerator = d3
       .line()
       .x((d: any) => this.projection(d)![0])
@@ -520,19 +535,12 @@ export class MapContext {
 
     // 更新指定线的属性
     this.gLines
-      .selectAll(".train-line")
-      .filter((d: any) => d[0] === id) // 根据 ID 过滤出对应的线
-      .attr("d", (d: any) => {
-        const sourceGeo = this.ctx.data.nodes()[sourceId]["geo_info"];
-        const targetGeo = this.ctx.data.nodes()[targetId]["geo_info"];
-        if (sourceGeo && targetGeo) {
-          return lineGenerator([sourceGeo, targetGeo]);
-        } else {
-          return "";
-        }
-      })
-      .attr("stroke", "blue") // 更新线的颜色（可以自定义）
-      .attr("stroke-width", 2 / transform.k); // 更新线的宽度
+      .selectAll<SVGPathElement, any>(".train-line")
+      .filter((d: any) => d.id === id) // 根据 ID 筛选目标线段
+      .attr("d", () => lineGenerator([sourceGeo, targetGeo])) // 更新路径
+      .attr("stroke", this.lineColorEncoder(lineData.trainShifts)) // 根据规则更新颜色
+      .attr("stroke-width", this.lineWidthEncoder(transform)) // 根据缩放更新宽度
+      .attr("opacity", 0.7); // 设置透明度
   }
 
   public rerender(itemId: string): void {

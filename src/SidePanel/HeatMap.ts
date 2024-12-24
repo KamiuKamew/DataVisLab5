@@ -128,12 +128,7 @@ export class HeatMap {
         const cell = d3.select(this);
 
         // 恢复大小
-        cell
-          .transition()
-          .duration(200)
-          .attr("transform", "scale(1)")
-          .attr("stroke", "black")
-          .attr("stroke-width", "0");
+        cell.transition().duration(200).attr("transform", "scale(1)").attr("stroke-width", "0");
 
         // 移除文本
         g.selectAll(".cell-text").remove();
@@ -229,12 +224,13 @@ export class HeatMap {
   }
 
   public highlightCell(source: string, target: string): void {
+    console.log("[HeatMap] Highlight cell", source, target);
     // Clear previous highlights
     this.svg.selectAll("rect").style("stroke", "none");
 
     // Highlight the specific cell
     const cellClass = `.cell-${source}-${target}`.replace(/\s+/g, "-");
-    this.svg.select(cellClass).style("stroke", "red").style("stroke-width", "0.5px");
+    this.svg.select(cellClass).style("stroke", "steelblue").style("stroke-width", "2px");
   }
 
   public clearHighlight(): void {

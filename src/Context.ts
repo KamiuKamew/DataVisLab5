@@ -95,12 +95,16 @@ export class Context {
     console.log("[Context] onChoosedNodeFirstChange", oldNodeId, newNodeId);
     if (newNodeId) this.exploreParams(newNodeId);
     if (this.currentView === "map") this.mapContext.onNodeFirstChange(oldNodeId, newNodeId); // TODO
+    if (this.currentView === "distance" || this.currentView === "time")
+      this.graphContext.onNodeFirstChange(oldNodeId, newNodeId);
   }
 
   onChoosedNodeSecondChange(oldNodeId: string | null, newNodeId: string | null): void {
     console.log("[Context] onChoosedNodeSecondChange", oldNodeId, newNodeId);
     if (newNodeId) this.exploreParams(newNodeId);
     if (this.currentView === "map") this.mapContext.onNodeSecondChange(oldNodeId, newNodeId);
+    if (this.currentView === "distance" || this.currentView === "time")
+      this.graphContext.onNodeSecondChange(oldNodeId, newNodeId);
   }
 
   onChoosedEdgeChange(oldEdgeId: string | null, newEdgeId: string | null): void {

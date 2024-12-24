@@ -108,8 +108,16 @@ export class ForceSimulator {
 
     const transform = d3.zoomTransform(this.canvas.node()!);
 
-    // const k = transform.k;
+    // 定义颜色和半径比例尺
+    const colorScale = d3
+      .scaleLinear<string>()
+      .domain([10000, 25000]) // 假设节点的数量在 0 到 100 之间
+      .range(["steelblue", "tomato"]);
+
+    const radiusScale = d3.scaleLinear<number>().domain([0, 15]).range([5, 15]);
+
     const k = 1.5;
+
     // 创建新的节点和标签
     const nodes = node
       .enter()
@@ -141,20 +149,19 @@ export class ForceSimulator {
     nodes
       .append("circle")
       .attr("id", (d) => `node-${d._id}`)
-      .attr("r", (d) => NODE_DEFAULT_RADIUS)
-      .attr("fill", (d) => "steelblue")
+      .attr("r", (d: any) => radiusScale(this.ctx.data().nodes()[d._id].degree)) // 根据数据值设置半径
+      .attr("fill", (d: any) => colorScale(this.ctx.data().nodes()[d._id].access_info)) // 根据数据值设置颜色
       .attr("stroke", "black")
       .attr("stroke-width", 1)
       .each((d: any) => {
         d.hoved = false;
       })
       .on("mouseover", (event, d: any) => {
-        d3.select(event.target).attr("fill", "lightblue");
+        d3.select(event.target).attr("stroke", "white").attr("stroke-width", 2);
         d.hoved = true;
-        // console.log("Mouseover on node:", d);
-      }) // 设置鼠标移入节点时变色
+      })
       .on("mouseout", (event, d: any) => {
-        d3.select(event.target).attr("fill", "steelblue");
+        d3.select(event.target).attr("stroke", "black").attr("stroke-width", 1);
         d.hoved = false;
       })
       .on("click", (event: MouseEvent, d: any) => {
@@ -356,14 +363,14 @@ export class ForceSimulator {
   public renderTrainLine(passByNodesId: string[], passByEdgesId: string[]): void {
     passByNodesId.forEach((nodeId) => {
       d3.select(`#node-${nodeId}`)
-        .attr("fill", "red")
+        .attr("stroke", "red")
         .on("mouseover", (event, d: any) => {
-          d3.select(event.target).attr("fill", "#ff7777");
+          d3.select(event.target).attr("stroke", "#ff7777");
           d.hoved = true;
           console.log("Mouseover on node:", d);
         }) // 设置鼠标移入节点时变色
         .on("mouseout", (event, d: any) => {
-          d3.select(event.target).attr("fill", "red");
+          d3.select(event.target).attr("stroke", "red");
           d.hoved = false;
         });
     });
@@ -385,14 +392,14 @@ export class ForceSimulator {
     const nodes = this.graph.getNodes();
     nodes.forEach((node) => {
       d3.select(`#node-${node._id}`)
-        .attr("fill", "steelblue")
+        .attr("stroke", "black")
         .on("mouseover", (event, d: any) => {
-          d3.select(event.target).attr("fill", "lightblue");
+          d3.select(event.target).attr("stroke", "white");
           d.hoved = true;
           // console.log("Mouseover on node:", d);
         }) // 设置鼠标移入节点时变色
         .on("mouseout", (event, d: any) => {
-          d3.select(event.target).attr("fill", "steelblue");
+          d3.select(event.target).attr("stroke", "black");
           d.hoved = false;
         });
     });

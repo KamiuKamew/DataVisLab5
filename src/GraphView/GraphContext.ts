@@ -210,6 +210,7 @@ export class GraphContext {
   exploreParams = (id: string) => this.ctx.exploreParams(id);
   setNodeFirst = (nodeId: string) => this.ctx.choosed.setNodeFirst(nodeId);
   setNodeSecond = (nodeId: string) => this.ctx.choosed.setNodeSecond(nodeId);
+  data = () => this.ctx.data;
 
   onNodeFirstChange = (oldNodeId: string | null, newNodeId: string | null) =>
     this.simulator!.onNodeFirstChange(oldNodeId, newNodeId);
