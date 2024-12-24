@@ -87,3 +87,8 @@ body {
 .sidebars-container > * {
   pointer-events: auto; /* 子元素不参与事件 */
 }
+
+p {
+  margin-top: -10px;
+  margin-bottom: 0;
+}

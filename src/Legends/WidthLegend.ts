@@ -1,4 +1,5 @@
 import * as d3 from "d3";
+import { LegendContext } from "./LegendsContext";
 
 interface PositionConfig {
   top: number;
@@ -16,10 +17,12 @@ class WidthLegend {
   private legendHeight: number = 40;
 
   constructor(
+    private ctx: LegendContext,
     svgSelector: string,
     legendType: string,
     widthScale: d3.ScaleLinear<number, number>,
-    margin: PositionConfig
+    margin: PositionConfig,
+    private text: string
   ) {
     this.svg = d3.select(svgSelector);
     this.legendType = legendType;
@@ -46,23 +49,48 @@ class WidthLegend {
       .style("stroke", "#000");
 
     // 坐标轴条
+    const axisScale = d3
+      .scaleLinear()
+      .domain(this.widthScale.domain())
+      .range([0, widthBarMaxWidth]);
     legendGroup
       .append("g")
       .attr("transform", `translate(0, 30)`)
-      .call(
-        d3
-          .axisBottom(
-            d3.scaleLinear().domain(this.widthScale.domain()).range([0, widthBarMaxWidth])
-          )
-          .ticks(5)
-      );
+      .call(d3.axisBottom(axisScale).ticks(5))
+      .selectAll("text")
+      .style("font-size", "6px");
+
+    // 添加可拖动圆点
+    const dragBehavior = d3.drag<SVGCircleElement, unknown>().on("drag", (event) => {
+      const x = Math.max(0, Math.min(widthBarMaxWidth, event.x));
+      d3.select(event.sourceEvent.target).attr("cx", x);
+      this.updateFilterFromCircles(circle1.attr("cx") as any, circle2.attr("cx") as any, axisScale);
+    });
+
+    const circle1 = legendGroup
+      .append("circle")
+      .attr("cx", 0)
+      .attr("cy", 30)
+      .attr("r", 5)
+      .style("fill", "white")
+      .style("stroke", "black")
+      .call(dragBehavior);
+
+    const circle2 = legendGroup
+      .append("circle")
+      .attr("cx", widthBarMaxWidth)
+      .attr("cy", 30)
+      .attr("r", 5)
+      .style("fill", "white")
+      .style("stroke", "black")
+      .call(dragBehavior);
 
     // 文字标注
     legendGroup
       .append("text")
       .attr("x", 0)
       .attr("y", 10)
-      .text(`${this.legendType.charAt(0).toUpperCase() + this.legendType.slice(1)} Width Mapping`)
+      .text(this.text)
       .style("font-size", "8px")
       .style("font-weight", "bold");
 
@@ -72,6 +100,21 @@ class WidthLegend {
     } else if (this.legendType === "edge") {
       this.drawEdgeLegend(legendGroup, widthBarMaxWidth);
     }
+  }
+
+  // 更新范围并调用过滤方法
+  private updateFilterFromCircles(
+    x1: number,
+    x2: number,
+    scale: d3.ScaleLinear<number, number>
+  ): void {
+    const range = [scale.invert(+x1), scale.invert(+x2)].sort((a, b) => a - b);
+    this.filter(range as [number, number]);
+  }
+
+  // 占位的过滤方法（需用户实现具体逻辑）
+  public filter(range: [number, number]): void {
+    this.ctx.filter(`${this.legendType}-width` as any, range);
   }
 
   // 获取梯形的点坐标
@@ -143,6 +186,7 @@ class WidthLegend {
 
   // 创建渐变定义
   public createGradients(): void {
+    const [min, max] = this.widthScale.range();
     const gradient = this.svg
       .append("defs")
       .append("linearGradient")
@@ -152,41 +196,9 @@ class WidthLegend {
       .attr("y1", "0%")
       .attr("y2", "0%");
 
-    gradient.append("stop").attr("offset", "0%").attr("stop-color", this.widthScale(0));
-    gradient.append("stop").attr("offset", "100%").attr("stop-color", this.widthScale(1));
+    gradient.append("stop").attr("offset", "0%").attr("stop-color", this.widthScale(min));
+    gradient.append("stop").attr("offset", "100%").attr("stop-color", this.widthScale(max));
   }
 }
 
 export { WidthLegend };
-
-// 设置宽度映射
-const nodeWidthScale = d3.scaleLinear().domain([0, 1]).range([5, 20]);
-const edgeWidthScale = d3.scaleLinear().domain([0, 1]).range([2, 20]);
-
-// 创建WidthLegend实例
-const nodeLegend = new WidthLegend("svg", "node", nodeWidthScale, {
-  top: 140,
-  right: 20,
-  bottom: 20,
-  left: 60,
-});
-
-// 创建渐变
-nodeLegend.createGradients();
-
-// 绘制节点宽度图例
-nodeLegend.draw();
-
-// 创建WidthLegend实例
-const edgeLegend = new WidthLegend("svg", "edge", edgeWidthScale, {
-  top: 200,
-  right: 20,
-  bottom: 20,
-  left: 60,
-});
-
-// 创建渐变
-edgeLegend.createGradients();
-
-// 绘制边宽度图例
-edgeLegend.draw();

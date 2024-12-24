@@ -12,7 +12,7 @@ export class LeftSidePanel {
 
   contentOnShow: "intro" | "filter" | "params" | undefined;
 
-  constructor() {
+  constructor(private ctx: Context) {
     // 获取按钮和第二层侧边栏
     this.tabButtons = document.querySelectorAll(`.${Names.LeftPanel_TabButton}`);
     this.sidePanel =
@@ -116,7 +116,6 @@ export class LeftSidePanel {
               </ul>
               <li>右侧边栏</li>
               <ul class="intro-text">
-                <li>哦不，还没写。</li>
               </ul>
             </ul>
           `;

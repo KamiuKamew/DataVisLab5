@@ -10,6 +10,9 @@ export class DensityCurve {
   private gCurve: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
   private gxAxis: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
   private gyAxis: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
+  private gxAxisLabel: d3.Selection<SVGTextElement, unknown, HTMLElement, any>;
+  private gyAxisLabel: d3.Selection<SVGTextElement, unknown, HTMLElement, any>;
+  private ginfinityLabel: d3.Selection<SVGTextElement, unknown, HTMLElement, any>;
   private gPath: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
   private gBalls: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
   private gPachinko: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
@@ -25,6 +28,9 @@ export class DensityCurve {
     this.gCurve = this.g.append("g").attr("class", "curve");
     this.gxAxis = this.gCurve.append("g").attr("class", "x-axis");
     this.gyAxis = this.gCurve.append("g").attr("class", "y-axis");
+    this.gxAxisLabel = this.g.append("text").attr("class", "x-axis-label");
+    this.gyAxisLabel = this.g.append("text").attr("class", "y-axis-label");
+    this.ginfinityLabel = this.g.append("text").attr("class", "infinity-label");
     this.gPath = this.gCurve.append("g").attr("class", "path");
     this.gBalls = this.g.append("g").attr("class", "balls");
     this.gPachinko = this.gBalls.append("g").attr("class", "pachinko-balls");
@@ -77,20 +83,10 @@ export class DensityCurve {
       .attr("transform", `translate(0, ${this.height})`)
       .transition()
       .duration(1000)
-      .call(
-        d3.axisBottom(x).tickSizeOuter(0) // 保持轴外刻度不变
-      )
-      .selection() // 返回选择集，避免出现默认的淡入效果
-      .attr("opacity", 1); // 确保透明度保持不变
+      .call(d3.axisBottom(x).tickSizeOuter(0))
+      .selection();
 
-    this.gyAxis
-      .transition()
-      .duration(1000)
-      .call(
-        d3.axisLeft(y).tickSizeOuter(0) // 保持轴外刻度不变
-      )
-      .selection()
-      .attr("opacity", 1); // 确保透明度保持不变
+    this.gyAxis.transition().duration(1000).call(d3.axisLeft(y).tickSizeOuter(0)).selection();
 
     // Update line path with animation
     const linePath = this.gPath.select("path");
@@ -111,6 +107,68 @@ export class DensityCurve {
 
     // Update balls
     this.updateBalls(data, infinityCount, x, y);
+
+    // Add x-axis label
+    this.gxAxisLabel
+      .data([null]) // Bind data to avoid duplicate labels
+      .join(
+        (enter) => enter.append("text").attr("class", "x-axis-label"),
+        (update) => update,
+        (exit) => exit.remove()
+      )
+      .attr("text-anchor", "middle")
+      .attr("x", -20)
+      .attr("y", -5)
+      .style("font-size", "10px")
+      .selectAll("tspan")
+      .data(["客流密度", "/(万人/km)"]) // Multi-line text content for x-axis (currently single-line)
+      .join(
+        (enter) => enter.append("tspan"),
+        (update) => update,
+        (exit) => exit.remove()
+      )
+      .attr("x", -20) // Ensure proper alignment for each line
+      .attr("y", -12)
+      .attr("dy", (d, i) => (i === 0 ? 0 : 12)) // Adjust line spacing
+      .text((d) => d);
+
+    // Add y-axis label
+    this.gyAxisLabel
+      .data([null])
+      .join(
+        (enter) => enter.append("text").attr("class", "y-axis-label"),
+        (update) => update,
+        (exit) => exit.remove()
+      )
+      .attr("text-anchor", "middle")
+      .attr("x", this.width + 100)
+      .attr("y", this.height + 15)
+      .style("font-size", "10px")
+      .selectAll("tspan")
+      .data(["里程数", "/km"]) // Multi-line text content for y-axis
+      .join(
+        (enter) => enter.append("tspan"),
+        (update) => update,
+        (exit) => exit.remove()
+      )
+      .attr("y", this.height + 10)
+      .attr("x", this.width + 90) // Keep lines aligned
+      .attr("dy", (d, i) => (i === 0 ? 0 : 12)) // Adjust line spacing for each line
+      .text((d) => d);
+
+    // Add Infinity label
+    this.ginfinityLabel
+      .data([null])
+      .join(
+        (enter) => enter.append("text").attr("class", "infinity-label"),
+        (update) => update,
+        (exit) => exit.remove()
+      )
+      .attr("text-anchor", "middle")
+      .attr("x", this.width + 40)
+      .attr("y", this.height + 15)
+      .style("font-size", "10")
+      .text("Infinity");
   }
 
   private updateBalls(
@@ -124,8 +182,8 @@ export class DensityCurve {
     const height = this.height;
 
     // Calculate Infinity column layout
-    const columnX = this.width + this.margin.right + 50; // Infinity column X
-    const columnWidth = 80; // Column width
+    const columnX = this.width + this.margin.right; // Infinity column X
+    const columnWidth = 60; // Column width
     const columnHeight = this.height; // Column height
     const rows = Math.floor(columnWidth / (2 * radius + 1)); // Balls per row
     const maxRows = Math.floor(columnHeight / (2 * radius + 1)); // Max rows
@@ -217,14 +275,6 @@ export class DensityCurve {
       circles.splice(bisect.left(circles, x, l, r), 0, { x, y });
       return y;
     };
-  }
-
-  public clear(): void {
-    // this.gxAxis.selectAll("*").remove();
-    // this.gyAxis.selectAll("*").remove();
-    // this.gPath.selectAll("*").remove();
-    // this.gPachinko.selectAll("*").remove();
-    // this.gInfinity.selectAll("*").remove();
   }
 
   private extractParamData(paramId: number): { id: string; value: number }[] {

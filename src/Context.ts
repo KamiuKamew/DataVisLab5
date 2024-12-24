@@ -10,11 +10,13 @@ import { DensityCurve } from "./SidePanel/DensityCurve";
 import { HeatMap } from "./SidePanel/HeatMap";
 import { Choosed, Path } from "./Global/Choosed";
 import { Graph } from "./GraphView/Basic/Graph";
+import { LegendContext } from "./Legends/LegendsContext";
 
 export class Context {
   data: Data;
   choosed: Choosed;
   private paramsExporer: ParamsExplorer;
+  private legendContext: LegendContext;
 
   private mapContext: MapContext;
   private graphContext: GraphContext;
@@ -35,11 +37,12 @@ export class Context {
     this.data = new Data();
     this.choosed = new Choosed(this);
     this.paramsExporer = new ParamsExplorer(this, this.data);
+    this.legendContext = new LegendContext(this, "svg");
 
     this.mapContext = new MapContext(this);
     this.graphContext = new GraphContext(this, this.mapContext.zoom, this.mapContext.projection);
 
-    this.leftSidePanel = new LeftSidePanel();
+    this.leftSidePanel = new LeftSidePanel(this);
     this.rightSidePanel = new RightSidePanel();
     this.topSidePanel = new TopSidePanel(this);
 
@@ -61,6 +64,8 @@ export class Context {
       this.heatMap = new HeatMap(this, d3.select("#heatMap"), this.shortestPath); // 创建 HeatMap 实例并绘制
       this.heatMap.render(0); // 渲染第 0 个参数的热力图
     });
+
+    this.legendContext.render();
   }
 
   onVievChange(view: "map" | "distance" | "time"): void {
@@ -153,9 +158,19 @@ export class Context {
   }
 
   rerenderDensityCurve(): void {
-    this.densityCurve.clear();
     const paramId = this.currentModel === "distance" ? 0 : 1;
     this.densityCurve.render(paramId);
+  }
+
+  filter(
+    filterKind: "node-color" | "edge-color" | "node-width" | "edge-width",
+    range: [number, number]
+  ): void {
+    console.log("[Context] filter", filterKind, range);
+    const [itemKind, attrKind] = filterKind.split("-");
+    const [min, max] = range;
+    if (this.currentView === "map")
+      this.mapContext.filter(itemKind as "node" | "edge", attrKind as "color" | "width", min, max);
   }
 }
 

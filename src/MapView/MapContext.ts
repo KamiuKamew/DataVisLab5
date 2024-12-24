@@ -1,7 +1,6 @@
 import * as d3 from "d3";
 import { Context } from "../Context";
 import { NodeTable } from "../Global/Data";
-import { Names } from "../Global/Names";
 import { Graph } from "../GraphView/Basic/Graph";
 
 export class MapContext {
@@ -111,7 +110,7 @@ export class MapContext {
     // 调整节点大小，使其始终保持相同的视觉大小
     this.gNodes
       .selectAll("circle")
-      .attr("r", 5 / transform.k)
+      .attr("r", this.nodeRadiusEncoder(transform)) // 设置圆的半径
       .attr("stroke-width", this.nodeStrokeWidthEncoder(transform, 2)); // 这里的 5 是节点的默认半径
 
     // 调整线的粗细
@@ -233,7 +232,7 @@ export class MapContext {
     nodes
       .append("circle")
       .attr("id", (d: any) => `node-${d[0]}`) // 设置节点的 id 属性
-      .attr("r", 5 / transform.k) // 设置圆的半径
+      .attr("r", this.nodeRadiusEncoder(transform)) // 设置圆的半径
       .attr("fill", this.nodeColorEncoder()) // 设置圆的填充颜色
       .attr("stroke", "black") // 设置圆的边框颜色
       .attr("stroke-width", this.nodeStrokeWidthEncoder(transform, 2))
@@ -366,12 +365,22 @@ export class MapContext {
     // 定义一个颜色比例尺
     const colorScale = d3
       .scaleLinear<string>()
-      .domain([10000, 15000, 25000]) // 假设节点的数量在 0 到 100 之间
-      .range(["green", "white", "red"]);
+      .domain([10000, 25000]) // 假设节点的数量在 0 到 100 之间
+      .range(["steelblue", "tomato"]);
 
     return (d: any) => {
       // 根据节点数量返回相应的颜色
       return colorScale(d[1]["access_info"]);
+    };
+  }
+
+  nodeRadiusEncoder(transform: d3.ZoomTransform): (d: any, i: any) => number {
+    // 定义一个半径比例尺
+    const radiusScale = d3.scaleLinear<number>().domain([0, 15]).range([5, 15]);
+
+    return (d: any) => {
+      // 根据节点数量返回相应的半径
+      return radiusScale(d[1]["degree"]) / transform.k;
     };
   }
 
@@ -380,15 +389,23 @@ export class MapContext {
   }
 
   lineWidthEncoder(transform: d3.ZoomTransform): (d: any) => number {
-    return (d: any) => (d.trainShifts * 0.15) / transform.k + 1.5;
+    // 定义一个线宽比例尺
+    const lineWidthScale = d3
+      .scaleLinear<number>()
+      .domain([0, 30]) // 假设节点的数量在 0 到 100 之间
+      .range([1.5, 10.5]);
+
+    return (d: any) => {
+      const source = Graph.getSourceId(d.id);
+      const target = Graph.getTargetId(d.id);
+      const degree = this.ctx.data.nodes()[source].degree + this.ctx.data.nodes()[target].degree;
+      return lineWidthScale(degree) / transform.k;
+    };
   }
 
   lineColorEncoder(): (d: any, i: any) => string {
     // 定义一个颜色比例尺
-    const colorScale = d3
-      .scaleLinear<string>()
-      .domain([0, 30, 100]) // 假设 trainShifts 的值在 0 到 100 之间
-      .range(["green", "white", "red"]);
+    const colorScale = d3.scaleLinear<string>().domain([0, 100]).range(["steelblue", "tomato"]);
 
     return (d: any) => {
       // 根据 trainShifts 返回相应的颜色
@@ -435,7 +452,7 @@ export class MapContext {
       .filter((d: any) => d[0] === id) // 根据 ID 过滤出对应的节点
       .attr("cx", (d: any) => this.projection(nodeData["geo_info"]!)![0]) // 更新 x 坐标
       .attr("cy", (d: any) => this.projection(nodeData["geo_info"]!)![1]) // 更新 y 坐标
-      .attr("r", 5 / transform.k) // 更新圆的半径
+      .attr("r", this.nodeRadiusEncoder(transform)) // 更新圆的半径
       .attr("fill", "blue") // 更新填充颜色（可以自定义）
       .attr("stroke", "white") // 更新边框颜色
       .attr("stroke-width", 1 / transform.k); // 更新边框宽度
@@ -477,5 +494,10 @@ export class MapContext {
 
   public rerender(itemId: string): void {
     return Graph.isEdgeId(itemId) ? this.rerenderLine(itemId) : this.rerenderNode(itemId);
+  }
+
+  filter(itemKind: "node" | "edge", attrKind: "color" | "width", min: number, max: number): void {
+    // if (itemKind === "node")
+    // TODO
   }
 }

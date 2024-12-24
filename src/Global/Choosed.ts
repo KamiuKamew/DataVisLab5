@@ -74,7 +74,7 @@ export class Choosed {
   setPath(newPath: Path | null): Path | null {
     let oldPath = null;
     if (this.path) oldPath = this.path;
-    if (oldPath === newPath) newPath = null;
+    if (oldPath?.id === newPath?.id) newPath = null;
     this.path = newPath;
     this.ctx.onChoosedPathChange(oldPath, newPath);
     return oldPath;

@@ -1,4 +1,5 @@
 import * as d3 from "d3";
+import { LegendContext } from "./LegendsContext";
 
 interface PositionConfig {
   top: number;
@@ -16,10 +17,12 @@ class ColorLegend {
   private legendHeight: number = 40;
 
   constructor(
+    private ctx: LegendContext,
     svgSelector: string,
     legendType: string,
     colorScale: d3.ScaleLinear<number, number>,
-    margin: PositionConfig
+    margin: PositionConfig,
+    private text: string
   ) {
     this.svg = d3.select(svgSelector);
     this.legendType = legendType;
@@ -46,21 +49,45 @@ class ColorLegend {
       .style("fill", `url(#${this.getColorGradientId()})`);
 
     // 坐标轴条
+    const axisScale = d3.scaleLinear().domain(this.colorScale.domain()).range([0, colorBarWidth]);
     legendGroup
       .append("g")
       .attr("transform", `translate(0, 30)`)
-      .call(
-        d3
-          .axisBottom(d3.scaleLinear().domain(this.colorScale.domain()).range([0, colorBarWidth]))
-          .ticks(5)
-      );
+      .call(d3.axisBottom(axisScale).ticks(5))
+      .selectAll("text")
+      .style("font-size", "6px");
+
+    // 添加可拖动圆点
+    const dragBehavior = d3.drag<SVGCircleElement, unknown>().on("drag", (event) => {
+      const x = Math.max(0, Math.min(colorBarWidth, event.x));
+      d3.select(event.sourceEvent.target).attr("cx", x);
+      this.updateFilterFromCircles(circle1.attr("cx") as any, circle2.attr("cx") as any, axisScale);
+    });
+
+    const circle1 = legendGroup
+      .append("circle")
+      .attr("cx", 0)
+      .attr("cy", 30)
+      .attr("r", 5)
+      .style("fill", "white")
+      .style("stroke", "black")
+      .call(dragBehavior);
+
+    const circle2 = legendGroup
+      .append("circle")
+      .attr("cx", colorBarWidth)
+      .attr("cy", 30)
+      .attr("r", 5)
+      .style("fill", "white")
+      .style("stroke", "black")
+      .call(dragBehavior);
 
     // 文字标注
     legendGroup
       .append("text")
       .attr("x", 0)
       .attr("y", 10)
-      .text(`${this.legendType.charAt(0).toUpperCase() + this.legendType.slice(1)} Color Mapping`)
+      .text(this.text)
       .style("font-size", "8px")
       .style("font-weight", "bold");
 
@@ -70,6 +97,20 @@ class ColorLegend {
     } else if (this.legendType === "edge") {
       this.drawEdgeLegend(legendGroup, colorBarWidth);
     }
+  }
+
+  // 更新范围并调用过滤方法
+  private updateFilterFromCircles(
+    x1: number,
+    x2: number,
+    scale: d3.ScaleLinear<number, number>
+  ): void {
+    const range = [scale.invert(+x1), scale.invert(+x2)].sort((a, b) => a - b);
+    this.filter(range as [number, number]);
+  }
+
+  public filter(range: [number, number]): void {
+    this.ctx.filter(`${this.legendType}-color` as any, range);
   }
 
   // 获取渐变ID
@@ -82,20 +123,21 @@ class ColorLegend {
     legendGroup: d3.Selection<SVGGElement, unknown, HTMLElement, any>,
     colorBarWidth: number
   ): void {
+    const [min, max] = this.colorScale.domain();
     // 左右两个圆点
     legendGroup
       .append("circle")
       .attr("cx", -10)
       .attr("cy", 25)
       .attr("r", 7)
-      .style("fill", this.colorScale(0));
+      .style("fill", this.colorScale(min));
 
     legendGroup
       .append("circle")
       .attr("cx", colorBarWidth + 10)
       .attr("cy", 25)
       .attr("r", 7)
-      .style("fill", this.colorScale(1));
+      .style("fill", this.colorScale(max));
   }
 
   // 绘制边颜色图例
@@ -123,6 +165,7 @@ class ColorLegend {
 
   // 创建渐变定义
   public createGradients(): void {
+    const [min, max] = this.colorScale.domain();
     const gradient = this.svg
       .append("defs")
       .append("linearGradient")
@@ -132,47 +175,9 @@ class ColorLegend {
       .attr("y1", "0%")
       .attr("y2", "0%");
 
-    gradient.append("stop").attr("offset", "0%").attr("stop-color", this.colorScale(0));
-    gradient.append("stop").attr("offset", "100%").attr("stop-color", this.colorScale(1));
+    gradient.append("stop").attr("offset", "0%").attr("stop-color", this.colorScale(min));
+    gradient.append("stop").attr("offset", "100%").attr("stop-color", this.colorScale(max));
   }
 }
 
 export { ColorLegend };
-
-// 设置颜色映射
-const nodeColorScale = d3
-  .scaleLinear()
-  .domain([0, 1])
-  .range(["blue", "red"] as any);
-const edgeColorScale = d3
-  .scaleLinear()
-  .domain([0, 1])
-  .range(["green", "yellow"] as any);
-
-// 创建ColorLegend实例
-const nodeLegend = new ColorLegend("svg", "node", nodeColorScale, {
-  top: 20,
-  right: 20,
-  bottom: 20,
-  left: 60,
-});
-
-// 创建渐变
-nodeLegend.createGradients();
-
-// 绘制节点颜色图例
-nodeLegend.draw();
-
-// 创建ColorLegend实例
-const edgeLegend = new ColorLegend("svg", "edge", edgeColorScale, {
-  top: 80,
-  right: 20,
-  bottom: 20,
-  left: 60,
-});
-
-// 创建渐变
-edgeLegend.createGradients();
-
-// 绘制边颜色图例
-edgeLegend.draw();

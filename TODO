@@ -34,22 +34,12 @@
         - [ ] 可视化编码
         - [ ] 鼠标悬浮事件：显示节点信息、路径信息、站点信息等。
 
-
-请使用ts语言、使用D3库制作一个类，用于绘制一个密度曲线图。类接受三个参数，第一个参数svg: d3.select，用于指定绘制地点；第二个参数data: Data，用于提供绘制用的数据，其中，Data的adjacencyTable(): AdjacencyTable 方法返回一个对象：
-export type AdjacencyTable = {
-  [source_name: string]: {
-    [target_name: string]: {
-      id: string;
-      name: string;
-
-      params?: [number, number, number]; // duration_minute, distance_km, _
-    };
-  };
-};
-第三个参数paramId: number，指定使用params?: [number, number, number]中的第几个参数进行密度统计。
-
-这个
-{
-    "length": number;
-    "passBy": number[];
-}
+- 来不及了。搞了这几个去展示了。
+    - 设计可视映射：
+        - 节点大小：年到达人数
+        - 节点颜色：
+        - 路线宽度：年客流量
+        - 路线颜色：线路重要性
+    - debug
+    - 写PPT
+    - 完善图例

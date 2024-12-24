@@ -6,8 +6,9 @@ export type NodeTable = {
     id: string;
     name: string;
 
-    access_info?: number;
-    geo_info?: [number, number]; // 经度，纬度 [longitude, latitude]
+    access_info: number;
+    geo_info: [number, number]; // 经度，纬度 [longitude, latitude]
+    degree: number;
   };
 };
 
@@ -44,7 +45,13 @@ export class Data {
       d3.json(AccessInfoURL).then((data: any) => {
         Object.entries(data).forEach(([id, access_info]: [string, any]) => {
           if (!this._nodes[id]) {
-            this._nodes[id] = { id: id, name: id, access_info: access_info, geo_info: [0, 0] };
+            this._nodes[id] = {
+              id: id,
+              name: id,
+              access_info: access_info,
+              geo_info: [0, 0],
+              degree: 0,
+            };
             this._adjacencyTable[id] = {};
           }
           this._nodes[id]["access_info"] = access_info;
@@ -53,7 +60,7 @@ export class Data {
       d3.json(GeoInfoURL).then((data_1: any) => {
         Object.entries(data_1).forEach(([id, geo]: [string, any]) => {
           if (!this._nodes[id]) {
-            this._nodes[id] = { id: id, name: id, access_info: 0, geo_info: geo };
+            this._nodes[id] = { id: id, name: id, access_info: 0, geo_info: geo, degree: 0 };
             this._adjacencyTable[id] = {};
           }
           this._nodes[id]["geo_info"] = geo;
@@ -79,6 +86,8 @@ export class Data {
                       trainShifts: 0,
                       params: [duration_minute, distance_km, _],
                     };
+                    this._nodes[source_name].degree++;
+                    this._nodes[target_name].degree++;
                   }
                 }
               );

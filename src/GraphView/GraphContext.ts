@@ -75,6 +75,7 @@ export class GraphContext {
         name: `new node ${id}`,
         geo_info: [0, 0],
         access_info: 0,
+        degree: 0,
       };
       if (!this.isiniting) this.ctx.onParamChange(id);
     });
@@ -101,14 +102,23 @@ export class GraphContext {
         };
       }
       this.ctx.data.adjacencyTable()[sourceId][targetId].params = [distance, 3 * distance, 0];
-      if (!this.isiniting) this.ctx.onParamChange(id);
+      if (!this.isiniting) {
+        this.ctx.data.nodes()[sourceId].degree++;
+        this.ctx.data.nodes()[targetId].degree++;
+        this.ctx.onParamChange(id);
+      }
     });
 
     graphEventManager.on("EdgeRemoved", (id: string) => {
       const sourceId = Graph.getSourceId(id);
       const targetId = Graph.getTargetId(id);
+
       delete this.ctx.data.adjacencyTable()[sourceId][targetId];
-      if (!this.isiniting) this.ctx.onParamChange(id);
+      if (!this.isiniting) {
+        this.ctx.data.nodes()[sourceId].degree--;
+        this.ctx.data.nodes()[targetId].degree--;
+        this.ctx.onParamChange(id);
+      }
     });
   }
 
