@@ -451,16 +451,54 @@ export class MapContext {
       return;
     }
 
-    // 更新指定节点的属性
-    this.gNodes
-      .selectAll("circle")
-      .filter((d: any) => d[0] === id) // 根据 ID 过滤出对应的节点
-      .attr("cx", (d: any) => this.projection(nodeData["geo_info"]!)![0]) // 更新 x 坐标
-      .attr("cy", (d: any) => this.projection(nodeData["geo_info"]!)![1]) // 更新 y 坐标
-      .attr("r", this.nodeRadiusEncoder(transform)) // 更新圆的半径
-      .attr("fill", "blue") // 更新填充颜色（可以自定义）
-      .attr("stroke", "white") // 更新边框颜色
-      .attr("stroke-width", 1 / transform.k); // 更新边框宽度
+    // 选择指定的节点组
+    const nodeGroup = this.gNodes
+      .selectAll<SVGGElement, [string, any]>("g")
+      .filter((d: any) => d[0] === id);
+
+    if (nodeGroup.empty()) {
+      console.log(`[MapContext] Node group with id ${id} not found.`);
+      return;
+    }
+
+    // 更新节点组的 transform 属性（即位置）
+    nodeGroup.attr(
+      "transform",
+      `translate(${this.projection(nodeData["geo_info"])![0]}, ${
+        this.projection(nodeData["geo_info"])![1]
+      })`
+    );
+
+    // 更新矩形标签的样式
+    nodeGroup
+      .select("rect")
+      .attr("x", -25 / transform.k)
+      .attr("y", -20 / transform.k)
+      .attr("width", 50 / transform.k)
+      .attr("height", 20 / transform.k)
+      .attr("rx", 5 / transform.k)
+      .attr("ry", 5 / transform.k)
+      .style("fill", "white")
+      .style("stroke", "black")
+      .style("stroke-width", 1 / transform.k)
+      .style("opacity", 0.7);
+
+    // 更新圆形节点的样式
+    nodeGroup
+      .select("circle")
+      .attr("r", this.nodeRadiusEncoder(transform))
+      .attr("fill", this.nodeColorEncoder()) // 根据需要调用颜色编码器
+      .attr("stroke", "black")
+      .attr("stroke-width", this.nodeStrokeWidthEncoder(transform, 2));
+
+    // 更新文本标签的样式和内容
+    nodeGroup
+      .select("text")
+      .attr("x", 0)
+      .attr("y", -6 / transform.k)
+      .attr("text-anchor", "middle")
+      .style("font-size", `${12 / transform.k}px`)
+      .text(nodeData["name"]);
   }
 
   private rerenderLine(id: string): void {

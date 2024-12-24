@@ -85,7 +85,7 @@ export class Context {
 
   onParamChange(itemId: string): void {
     console.log("[Context] onParamChange");
-    this.rerenderMap(itemId);
+    if (this.currentView === "map") this.rerenderMap(itemId);
     this.recalculateShortestPath();
     this.rerenderDensityCurve();
     this.rerenderHeatMap();
