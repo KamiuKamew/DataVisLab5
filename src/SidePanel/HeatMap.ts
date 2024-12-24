@@ -25,7 +25,9 @@ export class HeatMap {
     this.svg.selectAll("*").remove();
 
     // Append the main group element
-    this.svg.append("g").attr("transform", `translate(${this.margin.left}, ${this.margin.top})`);
+    this.svg
+      .append("g")
+      .attr("transform", `translate(${this.margin.left}, ${this.margin.top + 80})`);
   }
 
   public render(paramId: number): void {
@@ -97,8 +99,8 @@ export class HeatMap {
       .selectAll("text")
       .style("text-anchor", "end")
       .attr("dx", "-0.8em")
-      .attr("dy", "0.15em")
-      .attr("transform", "rotate(-45)");
+      .attr("dy", "-0.5em")
+      .attr("transform", "rotate(-90)");
 
     g.append("g").call(yAxis);
 
@@ -106,14 +108,35 @@ export class HeatMap {
     const legendWidth = 200;
     const legendHeight = 20;
 
+    // 添加图例容器
     const legendSvg = this.svg
       .append("g")
-      .attr("transform", `translate(${this.margin.left}, ${this.height + 40})`);
+      .attr("class", "legend")
+      .attr("transform", `translate(${this.margin.left}, 50)`);
 
-    const legendScale = d3.scaleLinear().domain([0, maxParam]).range([0, legendWidth]);
+    // 添加图例文字说明
+    legendSvg
+      .append("text")
+      .attr("x", 0)
+      .attr("y", -10) // 文字位置在图例的上方
+      .style("font-size", "12px")
+      .style("font-weight", "bold")
+      .style("text-anchor", "start") // 左对齐
+      .text("颜色映射：里程数（单位：千米）");
+
+    // 使用与 colorScale 一致的范围
+    const legendScale = d3.scaleLinear().domain(colorScale.domain()).range([0, legendWidth]);
 
     const legendAxis = d3.axisBottom(legendScale).ticks(5);
 
+    // 创建多个渐变点
+    const numStops = 10; // 可以调整以增加或减少渐变的平滑度
+    const gradientStops = d3.range(0, 1 + 1e-6, 1 / (numStops - 1)).map((t) => ({
+      offset: `${t * 100}%`,
+      color: d3.interpolateReds(t), // 从 d3.interpolateReds 获取颜色
+    }));
+
+    // 更新渐变定义
     const legendGradient = legendSvg
       .append("defs")
       .append("linearGradient")
@@ -123,10 +146,12 @@ export class HeatMap {
       .attr("x2", "100%")
       .attr("y2", "0%");
 
-    legendGradient.append("stop").attr("offset", "0%").attr("stop-color", d3.interpolateReds(0));
+    // 添加渐变的 stop 节点
+    gradientStops.forEach((stop) => {
+      legendGradient.append("stop").attr("offset", stop.offset).attr("stop-color", stop.color);
+    });
 
-    legendGradient.append("stop").attr("offset", "100%").attr("stop-color", d3.interpolateReds(1));
-
+    // 绘制图例条
     legendSvg
       .append("rect")
       .attr("x", 0)
@@ -135,12 +160,14 @@ export class HeatMap {
       .attr("height", legendHeight)
       .style("fill", "url(#legendGradient)");
 
+    // 绘制图例轴
     legendSvg.append("g").attr("transform", `translate(0, ${legendHeight})`).call(legendAxis);
   }
 
   public clear(): void {
     // Clear SVG for new rendering
     this.svg.select("g").selectAll("*").remove();
+    this.svg.select(".legend").remove();
   }
 
   public highlightCell(source: string, target: string): void {
