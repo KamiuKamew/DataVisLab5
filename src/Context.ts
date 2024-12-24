@@ -167,10 +167,8 @@ export class Context {
     range: [number, number]
   ): void {
     console.log("[Context] filter", filterKind, range);
-    const [itemKind, attrKind] = filterKind.split("-");
     const [min, max] = range;
-    if (this.currentView === "map")
-      this.mapContext.filter(itemKind as "node" | "edge", attrKind as "color" | "width", min, max);
+    if (this.currentView === "map") this.mapContext.filter(filterKind, min, max);
   }
 }
 

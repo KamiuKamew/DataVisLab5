@@ -501,8 +501,71 @@ export class MapContext {
     return Graph.isEdgeId(itemId) ? this.rerenderLine(itemId) : this.rerenderNode(itemId);
   }
 
-  filter(itemKind: "node" | "edge", attrKind: "color" | "width", min: number, max: number): void {
-    // if (itemKind === "node")
-    // TODO
+  filter(
+    kind: "node-color" | "edge-color" | "node-width" | "edge-width",
+    min: number,
+    max: number
+  ): void {
+    switch (kind) {
+      case "node-color":
+        this.gNodes.selectAll("g").attr("display", (d: any) => {
+          const accessInfo = d[1]["access_info"];
+          return accessInfo >= min && accessInfo <= max ? "block" : "none";
+        });
+        const undisplayedNodesC = this.gNodes.selectAll("g").filter((d: any) => {
+          const accessInfo = d[1]["access_info"];
+          return accessInfo < min || accessInfo > max;
+        });
+        this.gLines.selectAll(".train-line").attr("display", (d: any) => {
+          const sourceId = Graph.getSourceId(d.id);
+          const targetId = Graph.getTargetId(d.id);
+          if (
+            undisplayedNodesC.filter((d: any) => d[0] === sourceId || d[0] === targetId).size() > 0
+          ) {
+            return "none";
+          } else {
+            return "block";
+          }
+        });
+        break;
+      case "node-width":
+        this.gNodes.selectAll("g").attr("display", (d: any) => {
+          const degree = d[1]["degree"];
+          return degree >= min && degree <= max ? "block" : "none";
+        });
+        const undisplayedNodesW = this.gNodes.selectAll("g").filter((d: any) => {
+          const degree = d[1]["degree"];
+          return degree < min || degree > max;
+        });
+        this.gLines.selectAll(".train-line").attr("display", (d: any) => {
+          const sourceId = Graph.getSourceId(d.id);
+          const targetId = Graph.getTargetId(d.id);
+          if (
+            undisplayedNodesW.filter((d: any) => d[0] === sourceId || d[0] === targetId).size() > 0
+          ) {
+            return "none";
+          } else {
+            return "block";
+          }
+        });
+        break;
+      case "edge-color":
+        this.gLines.selectAll(".train-line").attr("display", (d: any) => {
+          const trainShifts = d.trainShifts;
+          return trainShifts >= min && trainShifts <= max ? "block" : "none";
+        });
+        break;
+      case "edge-width":
+        this.gLines.selectAll(".train-line").attr("display", (d: any) => {
+          const degree =
+            this.ctx.data.nodes()[Graph.getSourceId(d.id)].degree +
+            this.ctx.data.nodes()[Graph.getTargetId(d.id)].degree;
+          return degree >= min && degree <= max ? "block" : "none";
+        });
+        break;
+      default:
+        console.log(`[MapContext] Invalid filter: ${kind}`);
+        break;
+    }
   }
 }

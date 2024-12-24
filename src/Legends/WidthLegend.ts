@@ -121,8 +121,8 @@ class WidthLegend {
   private getTrapezoidPoints(width: number, height: number): string {
     const [min, max] = this.widthScale.range();
     const points = [
-      `0,${10 - height}`, // 左上角
-      `${width},${10 - min}`, // 右上角
+      `0,${10 - min}`, // 左上角
+      `${width},${10 - height}`, // 右上角
       `${width},${10}`, // 右下角
       `0,${10}`, // 左下角
     ];
@@ -144,16 +144,16 @@ class WidthLegend {
     legendGroup
       .append("circle")
       .attr("cx", -10)
-      .attr("cy", 25 - max / 4)
-      .attr("r", max / 2)
+      .attr("cy", 25 - min / 4)
+      .attr("r", min / 2)
       .style("fill", "#ffd")
       .style("stroke", "#000");
 
     legendGroup
       .append("circle")
       .attr("cx", widthBarMaxWidth + 10)
-      .attr("cy", 25 - min / 4)
-      .attr("r", min / 2)
+      .attr("cy", 25 - max / 4)
+      .attr("r", max / 2)
       .style("fill", "#ffd")
       .style("stroke", "#000");
   }
@@ -167,18 +167,18 @@ class WidthLegend {
     // 左右两条竖线表示最小和最大宽度
     legendGroup
       .append("rect")
-      .attr("x", -20)
+      .attr("x", -12)
       .attr("y", 10)
-      .attr("width", max)
+      .attr("width", min)
       .attr("height", 20)
       .style("fill", "#ffd")
       .style("stroke", "#000");
 
     legendGroup
       .append("rect")
-      .attr("x", widthBarMaxWidth + 8)
+      .attr("x", widthBarMaxWidth + 4)
       .attr("y", 10)
-      .attr("width", min)
+      .attr("width", max)
       .attr("height", 20)
       .style("fill", "#ffd")
       .style("stroke", "#000");
