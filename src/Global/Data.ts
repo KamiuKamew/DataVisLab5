@@ -33,6 +33,8 @@ export class Data {
   constructor() {
     this._nodes = {};
     this._adjacencyTable = {};
+
+    console.log(`[${this.constructor.name}] Constructed.`);
   }
 
   async load(
@@ -41,92 +43,89 @@ export class Data {
     AdjacencyTableURL: string = "./data/FilteredAdjacencyInfo.json",
     TrainInfoURL: string = "./data/FilteredTrainInfo.json"
   ): Promise<void> {
-    await Promise.all([
-      d3.json(AccessInfoURL).then((data: any) => {
-        Object.entries(data).forEach(([id, access_info]: [string, any]) => {
-          if (!this._nodes[id]) {
-            this._nodes[id] = {
-              id: id,
-              name: id,
-              access_info: access_info,
-              geo_info: [0, 0],
-              degree: 0,
-            };
-            this._adjacencyTable[id] = {};
-          }
-          this._nodes[id]["access_info"] = access_info;
-        });
-      }),
-      d3.json(GeoInfoURL).then((data_1: any) => {
-        Object.entries(data_1).forEach(([id, geo]: [string, any]) => {
-          if (!this._nodes[id]) {
-            this._nodes[id] = { id: id, name: id, access_info: 0, geo_info: geo, degree: 0 };
-            this._adjacencyTable[id] = {};
-          }
-          this._nodes[id]["geo_info"] = geo;
-        });
-      }),
-    ]).then(() => {
-      d3.json(AdjacencyTableURL)
-        .then((data_2: any) => {
-          Object.entries(data_2).forEach(([source_name, targets]: [string, any]) => {
-            if (this._adjacencyTable[source_name]) {
-              Object.entries(targets).forEach(
-                ([target_name, [duration_minute, distance_km, _]]: [string, any]) => {
-                  if (
-                    source_name !== target_name &&
-                    this._adjacencyTable[target_name][source_name] === undefined
-                  ) {
-                    const name = Graph.getEdgeId(source_name, target_name);
-                    this._adjacencyTable[source_name][target_name] = {
-                      id: name,
-                      name: name,
+    await d3.json(AccessInfoURL).then((data: any) => {
+      Object.entries(data).forEach(([id, access_info]: [string, any]) => {
+        if (!this._nodes[id]) {
+          this._nodes[id] = {
+            id: id,
+            name: id,
+            access_info: access_info,
+            geo_info: [0, 0],
+            degree: 0,
+          };
+          this._adjacencyTable[id] = {};
+        }
+        this._nodes[id]["access_info"] = access_info;
+      });
+      console.log(`[${this.constructor.name}] AccessInfo loaded.`);
+    });
+    await d3.json(GeoInfoURL).then((data_1: any) => {
+      Object.entries(data_1).forEach(([id, geo]: [string, any]) => {
+        if (!this._nodes[id]) {
+          this._nodes[id] = { id: id, name: id, access_info: 0, geo_info: geo, degree: 0 };
+          this._adjacencyTable[id] = {};
+        }
+        this._nodes[id]["geo_info"] = geo;
+      });
+      console.log(`[${this.constructor.name}] GeoInfo loaded.`);
+    });
+    await d3.json(AdjacencyTableURL).then((data_2: any) => {
+      Object.entries(data_2).forEach(([source_name, targets]: [string, any]) => {
+        if (this._adjacencyTable[source_name]) {
+          Object.entries(targets).forEach(
+            ([target_name, [duration_minute, distance_km, _]]: [string, any]) => {
+              if (
+                source_name !== target_name &&
+                this._adjacencyTable[target_name][source_name] === undefined
+              ) {
+                const name = Graph.getEdgeId(source_name, target_name);
+                this._adjacencyTable[source_name][target_name] = {
+                  id: name,
+                  name: name,
 
-                      trainShifts: 0,
-                      params: [duration_minute, distance_km, _],
-                    };
-                    this._nodes[source_name].degree++;
-                    this._nodes[target_name].degree++;
-                  }
-                }
-              );
+                  trainShifts: 0,
+                  params: [duration_minute, distance_km, _],
+                };
+                this._nodes[source_name].degree++;
+                this._nodes[target_name].degree++;
+              }
+            }
+          );
+        }
+      });
+      console.log(`[${this.constructor.name}] AdjacencyTable loaded.`);
+    });
+    await d3.json(TrainInfoURL).then((data_2: any) => {
+      Object.entries(data_2).forEach(([source_name, targets]: [string, any]) => {
+        if (this._adjacencyTable[source_name]) {
+          Object.entries(targets).forEach(([target_name, trainShifts]: [string, any]) => {
+            if (
+              source_name !== target_name &&
+              this._adjacencyTable[target_name][source_name] === undefined
+            ) {
+              const name = Graph.getEdgeId(source_name, target_name);
+              this._adjacencyTable[source_name][target_name] = {
+                id: name,
+                name: name,
+
+                trainShifts:
+                  (d3.min([trainShifts, 5]) + 1) *
+                  d3.min([
+                    (this._nodes[source_name].access_info + this._nodes[target_name].access_info) /
+                      2,
+                    31921.15,
+                  ])!,
+                params: [0, 0, 0],
+              };
             }
           });
-        })
-        .then(() => {
-          d3.json(TrainInfoURL).then((data_2: any) => {
-            Object.entries(data_2).forEach(([source_name, targets]: [string, any]) => {
-              if (this._adjacencyTable[source_name]) {
-                Object.entries(targets).forEach(([target_name, trainShifts]: [string, any]) => {
-                  if (
-                    source_name !== target_name &&
-                    this._adjacencyTable[target_name][source_name] === undefined
-                  ) {
-                    const name = Graph.getEdgeId(source_name, target_name);
-                    this._adjacencyTable[source_name][target_name] = {
-                      id: name,
-                      name: name,
-
-                      trainShifts:
-                        (d3.min([trainShifts, 5]) + 1) *
-                        d3.min([
-                          (this._nodes[source_name].access_info +
-                            this._nodes[target_name].access_info) /
-                            2,
-                          31921.15,
-                        ]), // TODO
-                      params: [0, 0, 0],
-                    };
-                  }
-                });
-              }
-            });
-          });
-        });
+        }
+      });
+      console.log(`[${this.constructor.name}] TrainInfo loaded.`);
     });
-    console.log(this._nodes);
-    console.log(this._adjacencyTable);
     this.loaded = true;
+
+    console.log(`[${this.constructor.name}] loaded.`);
   }
 
   nodes(): NodeTable {

@@ -21,6 +21,8 @@ export class Choosed {
     this.nodeSecond = null;
     this.edge = null;
     this.path = null;
+
+    console.log(`[${this.constructor.name}] Constructed.`);
   }
   setNodeFirst(newNode: string | null): string | null {
     let oldNode = null;

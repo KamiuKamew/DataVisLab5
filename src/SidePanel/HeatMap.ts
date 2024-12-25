@@ -35,6 +35,8 @@ export class HeatMap {
       .attr("class", "cell-info")
       .raise()
       .style("visibility", "hidden");
+
+    console.log(`[${this.constructor.name}] Constructed.`);
   }
 
   public render(paramId: number): void {
@@ -138,6 +140,8 @@ export class HeatMap {
     g.append("g").call(yAxis);
 
     this.renderLegend(colorScale);
+
+    console.log(`[${this.constructor.name}] Rendered.`);
   }
 
   private renderLegend(colorScale: d3.ScaleSequential<string, number>): void {

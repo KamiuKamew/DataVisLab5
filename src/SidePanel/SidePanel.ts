@@ -36,6 +36,8 @@ export class LeftSidePanel {
       (() => {
         throw new Error("拖拽元素不存在");
       }).call(this);
+
+    console.log(`[${this.constructor.name}] Constructed.`);
   }
 
   changeToParamsView() {
@@ -167,6 +169,7 @@ export class LeftSidePanel {
       document.addEventListener("mousemove", onMouseMove);
       document.addEventListener("mouseup", onMouseUp);
     });
+    console.log(`[${this.constructor.name}] inited.`);
   }
 }
 
@@ -201,6 +204,8 @@ export class RightSidePanel {
         if (display === "block") d3.select(sidebar).raise();
       });
     });
+
+    console.log(`[${this.constructor.name}] Constructed.`);
   }
 
   private addDraggable(draggerId: string, sidebarId: string) {
@@ -245,6 +250,8 @@ export class RightSidePanel {
     this.sidebar_ids.forEach(({ button_id, sidebar_id, dragger_id }) => {
       this.addDraggable(dragger_id, sidebar_id);
     });
+
+    console.log(`[${this.constructor.name}] inited.`);
   }
 }
 
@@ -264,6 +271,8 @@ export class TopSidePanel {
         }).call(this);
       this.buttons.set(button_id, button);
     });
+
+    console.log(`[${this.constructor.name}] Constructed.`);
   }
 
   public init() {
@@ -285,5 +294,7 @@ export class TopSidePanel {
         //   });
       }
     });
+
+    console.log(`[${this.constructor.name}] inited.`);
   }
 }

@@ -42,6 +42,8 @@ export class MapContext {
     d3.select("svg").on("contextmenu", (event: MouseEvent) => {
       event.preventDefault(); // 阻止右键菜单
     });
+
+    console.log(`[${this.constructor.name}] Constructed.`);
   }
 
   // 重置视图
@@ -429,6 +431,8 @@ export class MapContext {
     // 初始化缩放
     this.svg.call(this.zoom as any);
     this.svg.call(this.zoom.transform, d3.zoomTransform(this.svg.node()));
+
+    console.log(`[${this.constructor.name}] rendered.`);
   }
 
   public clear(): void {

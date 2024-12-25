@@ -10,6 +10,8 @@ export class ParamsExplorer {
     this.sidePanelContent = document.getElementById(
       Names.LeftPanel_SidePanelContent
     ) as HTMLElement;
+
+    console.log(`[${this.constructor.name}] Constructed.`);
   }
 
   explore(id?: string) {

@@ -39,10 +39,12 @@ export class DensityCurve {
     const bbox = this.svg.node()?.getBoundingClientRect();
     this.width = (bbox?.width || 800) - this.margin.left - this.margin.right - 200;
     this.height = (bbox?.height || 500) - this.margin.top - this.margin.bottom - 100;
+
+    console.log(`[${this.constructor.name}] Constructed.`);
   }
 
   public render(paramId: number): void {
-    const data: { id: string; value: number }[] = this.extractParamData(paramId);
+    const data = this.extractParamData(paramId);
     const infinityCount = this.extractInfinityCount(paramId);
 
     if (data.length === 0) {
@@ -50,7 +52,63 @@ export class DensityCurve {
       return;
     }
 
-    // Scale definitions
+    const startTime = performance.now(); // 记录开始时间
+
+    const { x, y, density, line } = this.prepareScalesAndDensity(data);
+    const prepareScalesAndDensityTime = performance.now(); // 记录 prepareScalesAndDensity 函数结束时间
+    console.log(
+      `[${this.constructor.name}] prepareScalesAndDensity took ${
+        prepareScalesAndDensityTime - startTime
+      } milliseconds.`
+    );
+
+    this.setupAxes(x, y);
+    const setupAxesTime = performance.now(); // 记录 setupAxes 函数结束时间
+    console.log(
+      `[${this.constructor.name}] setupAxes took ${
+        setupAxesTime - prepareScalesAndDensityTime
+      } milliseconds.`
+    );
+
+    this.updateLinePath(density, line);
+    const updateLinePathTime = performance.now(); // 记录 updateLinePath 函数结束时间
+    console.log(
+      `[${this.constructor.name}] updateLinePath took ${
+        updateLinePathTime - setupAxesTime
+      } milliseconds.`
+    );
+
+    this.updateBalls(data, infinityCount, x, y);
+    const updateBallsTime = performance.now(); // 记录 updateBalls 函数结束时间
+    console.log(
+      `[${this.constructor.name}] updateBalls took ${
+        updateBallsTime - updateLinePathTime
+      } milliseconds.`
+    );
+
+    this.updateLabels();
+    const updateLabelsTime = performance.now(); // 记录 updateLabels 函数结束时间
+    console.log(
+      `[${this.constructor.name}] updateLabels took ${
+        updateLabelsTime - updateBallsTime
+      } milliseconds.`
+    );
+
+    console.log(
+      `[${this.constructor.name}] render took ${
+        updateLabelsTime - startTime
+      } milliseconds in total.`
+    );
+
+    console.log(`[${this.constructor.name}] rendered.`);
+  }
+
+  private prepareScalesAndDensity(data: { id: string; value: number }[]): {
+    x: d3.ScaleLinear<number, number>;
+    y: d3.ScaleLinear<number, number>;
+    density: { x0: number; x1: number; density: number }[];
+    line: d3.Line<{ x0: number; x1: number; density: number }>;
+  } {
     const x = d3
       .scaleLinear()
       .domain([d3.min(data, (d) => d.value) as number, d3.max(data, (d) => d.value) as number])
@@ -77,6 +135,10 @@ export class DensityCurve {
       .y((d) => y(d.density))
       .curve(d3.curveBasis);
 
+    return { x, y, density, line };
+  }
+
+  private setupAxes(x: d3.ScaleLinear<number, number>, y: d3.ScaleLinear<number, number>): void {
     this.g.attr("transform", `translate(${this.margin.left}, ${this.margin.top})`);
 
     this.gxAxis
@@ -87,30 +149,40 @@ export class DensityCurve {
       .selection();
 
     this.gyAxis.transition().duration(1000).call(d3.axisLeft(y).tickSizeOuter(0)).selection();
+  }
 
-    // Update line path with animation
+  private updateLinePath(
+    density: { x0: number; x1: number; density: number }[],
+    line: d3.Line<{ x0: number; x1: number; density: number }>
+  ): void {
     const linePath = this.gPath.select("path");
 
     if (linePath.empty()) {
-      // If path doesn't exist, append a new one
       this.gPath
         .append("path")
         .datum(density)
         .attr("fill", "none")
         .attr("stroke", "steelblue")
         .attr("stroke-width", 2)
-        .attr("d", line); // Initial render
+        .attr("d", line);
     } else {
-      // Update existing path with transition
       linePath.datum(density).transition().duration(1000).attr("d", line);
     }
 
-    // Update balls
-    this.updateBalls(data, infinityCount, x, y);
+    console.log(`[${this.constructor.name}] updated line path.`);
+  }
 
-    // Add x-axis label
+  private updateLabels(): void {
+    this.updateXAxisLabel();
+    this.updateYAxisLabel();
+    this.updateInfinityLabel();
+
+    console.log(`[${this.constructor.name}] updated labels.`);
+  }
+
+  private updateXAxisLabel(): void {
     this.gxAxisLabel
-      .data([null]) // Bind data to avoid duplicate labels
+      .data([null])
       .join(
         (enter) => enter.append("text").attr("class", "x-axis-label"),
         (update) => update,
@@ -121,18 +193,19 @@ export class DensityCurve {
       .attr("y", -5)
       .style("font-size", "10px")
       .selectAll("tspan")
-      .data(["客流密度", "/(万人/km)"]) // Multi-line text content for x-axis (currently single-line)
+      .data(["客流密度", "/(万人/km)"])
       .join(
         (enter) => enter.append("tspan"),
         (update) => update,
         (exit) => exit.remove()
       )
-      .attr("x", -20) // Ensure proper alignment for each line
+      .attr("x", -20)
       .attr("y", -12)
-      .attr("dy", (d, i) => (i === 0 ? 0 : 12)) // Adjust line spacing
+      .attr("dy", (d, i) => (i === 0 ? 0 : 12))
       .text((d) => d);
+  }
 
-    // Add y-axis label
+  private updateYAxisLabel(): void {
     this.gyAxisLabel
       .data([null])
       .join(
@@ -145,18 +218,19 @@ export class DensityCurve {
       .attr("y", this.height + 15)
       .style("font-size", "10px")
       .selectAll("tspan")
-      .data(["里程数", "/km"]) // Multi-line text content for y-axis
+      .data(["里程数", "/km"])
       .join(
         (enter) => enter.append("tspan"),
         (update) => update,
         (exit) => exit.remove()
       )
       .attr("y", this.height + 10)
-      .attr("x", this.width + 90) // Keep lines aligned
-      .attr("dy", (d, i) => (i === 0 ? 0 : 12)) // Adjust line spacing for each line
+      .attr("x", this.width + 90)
+      .attr("dy", (d, i) => (i === 0 ? 0 : 12))
       .text((d) => d);
+  }
 
-    // Add Infinity label
+  private updateInfinityLabel(): void {
     this.ginfinityLabel
       .data([null])
       .join(
@@ -167,7 +241,7 @@ export class DensityCurve {
       .attr("text-anchor", "middle")
       .attr("x", this.width + 40)
       .attr("y", this.height + 15)
-      .style("font-size", "10")
+      .style("font-size", "10px")
       .text("Infinity");
   }
 
@@ -248,6 +322,8 @@ export class DensityCurve {
       .duration(1000)
       .attr("cy", this.height + 50) // Exit below the chart
       .remove();
+
+    console.log(`[${this.constructor.name}] updated balls.`);
   }
 
   private createDodger(radius: number) {

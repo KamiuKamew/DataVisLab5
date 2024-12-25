@@ -45,6 +45,8 @@ export class GraphContext {
     this.model = null;
 
     this.registerCallbacks(this.graphEventManager);
+
+    console.log(`[${this.constructor.name}] Constructed.`);
   }
 
   calculateDistance(sourceId: string, targetId: string): number {

@@ -15,6 +15,8 @@ export class LegendContext {
 
   constructor(private ctx: Context, svgSelector: string) {
     this.svgSelector = svgSelector;
+
+    console.log(`[${this.constructor.name}] Constructed.`);
   }
 
   public render(): void {
@@ -83,6 +85,8 @@ export class LegendContext {
       },
       "边宽度：边的度（两端节点的度之和）"
     );
+
+    console.log(`[${this.constructor.name}] rendered.`);
   }
 
   private createColorLegend(

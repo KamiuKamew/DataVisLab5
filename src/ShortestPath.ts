@@ -26,6 +26,8 @@ export class ShortestPath {
   constructor(private data: Data) {
     this.adjacencyTable = {};
     this.shortestPathTable = {};
+
+    console.log(`[${this.constructor.name}] Constructed.`);
   }
 
   getAdjacencyTable() {
@@ -60,6 +62,8 @@ export class ShortestPath {
       });
     });
     this.inited = true;
+
+    console.log(`[${this.constructor.name}] inited.`);
   }
 
   clear() {
@@ -83,7 +87,9 @@ export class ShortestPath {
         total += path.params[0].param !== Infinity ? 1 : 0;
       });
     });
-    console.log(`Total paths: ${total}`);
+    // console.log(`Total paths: ${total}`);
+
+    console.log(`[${this.constructor.name}] calced.`);
   }
 
   public calcNode(source_name: string) {
