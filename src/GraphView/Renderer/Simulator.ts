@@ -131,8 +131,12 @@ export class ForceSimulator {
     // 创建标签背景和边框
     nodes
       .append("rect")
-      .attr("x", -25 / k) // 设置矩形的起始位置
-      .attr("y", -20 / k) // 设置矩形的起始位置
+      .attr("x", (d) => {
+        return radiusScale(this.ctx.data().nodes()[d._id].degree);
+      })
+      .attr("y", (d) => {
+        return -10 / k;
+      })
       .attr("width", 50 / k) // 设置宽度
       .attr("height", 20 / k) // 设置高度
       .attr("rx", 5 / k) // 设置圆角
@@ -179,8 +183,12 @@ export class ForceSimulator {
     // 创建标签
     nodes
       .append("text")
-      .attr("x", 0) // 设置标签的偏移量
-      .attr("y", -6 / k)
+      .attr("x", (d: any, i: any) => {
+        return 25 / k + radiusScale(this.ctx.data().nodes()[d._id].degree);
+      })
+      .attr("y", (d: any, i: any) => {
+        return 3.5 / k;
+      })
       .attr("text-anchor", "middle")
       .style("font-size", `${12 / k}px`)
       .style("cursor", "pointer")

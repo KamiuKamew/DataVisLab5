@@ -118,17 +118,26 @@ export class MapContext {
 
     this.gNodes
       .selectAll("text")
-      .attr("y", -6 / transform.k)
+      .attr("x", (d: any, i: any) => {
+        return 25 / transform.k + this.nodeRadiusEncoder(transform)(d, i);
+      })
+      .attr("y", (d: any, i: any) => {
+        return 3.5 / transform.k;
+      })
       .style("font-size", `${12 / transform.k}px`);
 
     this.gNodes
       .selectAll("rect")
-      .attr("x", -25 / transform.k) // 设置矩形的起始位置
-      .attr("y", -20 / transform.k) // 设置矩形的起始位置
-      .attr("width", 50 / transform.k) // 设置宽度
-      .attr("height", 20 / transform.k) // 设置高度
-      .attr("rx", 5 / transform.k) // 设置圆角
-      .attr("ry", 5 / transform.k) // 设置圆角
+      .attr("x", (d) => {
+        return this.nodeRadiusEncoder(transform)(d, 0);
+      })
+      .attr("y", (d) => {
+        return -10 / transform.k;
+      })
+      .attr("width", 50 / transform.k)
+      .attr("height", 20 / transform.k)
+      .attr("rx", 5 / transform.k)
+      .attr("ry", 5 / transform.k)
       .style("stroke-width", 1 / transform.k);
   }
 
@@ -216,12 +225,16 @@ export class MapContext {
     // 创建标签背景和边框，确保它们处于最下层
     nodes
       .append("rect")
-      .attr("x", -25 / transform.k) // 设置矩形的起始位置
-      .attr("y", -20 / transform.k) // 设置矩形的起始位置
-      .attr("width", 50 / transform.k) // 设置宽度
-      .attr("height", 20 / transform.k) // 设置高度
-      .attr("rx", 5 / transform.k) // 设置圆角
-      .attr("ry", 5 / transform.k) // 设置圆角
+      .attr("x", (d) => {
+        return this.nodeRadiusEncoder(transform)(d, 0);
+      })
+      .attr("y", (d) => {
+        return -10 / transform.k;
+      })
+      .attr("width", 50 / transform.k)
+      .attr("height", 20 / transform.k)
+      .attr("rx", 5 / transform.k)
+      .attr("ry", 5 / transform.k)
       .style("fill", "white")
       .style("stroke", "black")
       .style("stroke-width", 1 / transform.k)
@@ -256,8 +269,12 @@ export class MapContext {
     // 创建标签
     const label = nodes
       .append("text")
-      .attr("x", 0) // 设置标签的偏移量
-      .attr("y", -6 / transform.k)
+      .attr("x", (d: any, i: any) => {
+        return 25 / transform.k + this.nodeRadiusEncoder(transform)(d, i);
+      })
+      .attr("y", (d: any, i: any) => {
+        return 3.5 / transform.k;
+      })
       .attr("text-anchor", "middle")
       .style("font-size", `${12 / transform.k}px`)
       .style("cursor", "pointer")
@@ -265,27 +282,6 @@ export class MapContext {
       .on("mouseover", (event: MouseEvent, d: any) => {
         d3.select((event.currentTarget as any).parentNode).raise();
       });
-
-    // // 鼠标悬浮时显示更多信息，并调整标签样式
-    // label
-    //   .on("mouseover", function (event, d) {
-    //     d3.select(this).style("font-weight", "bold"); // 加粗字体
-    //     d3.select(this.previousElementSibling) // 获取rect元素
-    //       .style("fill", "#f0f0f0") // 改变背景色
-    //       .attr("width", 70) // 改变宽度
-    //       .attr("height", 30); // 改变高度
-    //     // 显示更多信息
-    //     const info = d[1]["extra_info"] || "No additional info"; // 可以根据需要添加更多信息
-    //     d3.select(this).text(info).style("font-size", "14px");
-    //   })
-    //   .on("mouseout", function (event, d) {
-    //     d3.select(this).style("font-weight", "normal");
-    //     d3.select(this.previousElementSibling)
-    //       .style("fill", "white")
-    //       .attr("width", 50)
-    //       .attr("height", 20);
-    //     d3.select(this).text(d[1]["name"]);
-    //   });
   }
 
   onNodeFirstChange(oldNodeId: string | null, newNodeId: string | null): void {
@@ -472,8 +468,12 @@ export class MapContext {
     // 更新矩形标签的样式
     nodeGroup
       .select("rect")
-      .attr("x", -25 / transform.k)
-      .attr("y", -20 / transform.k)
+      .attr("x", (d) => {
+        return this.nodeRadiusEncoder(transform)(d, 0);
+      })
+      .attr("y", (d) => {
+        return -10 / transform.k;
+      })
       .attr("width", 50 / transform.k)
       .attr("height", 20 / transform.k)
       .attr("rx", 5 / transform.k)
@@ -494,8 +494,12 @@ export class MapContext {
     // 更新文本标签的样式和内容
     nodeGroup
       .select("text")
-      .attr("x", 0)
-      .attr("y", -6 / transform.k)
+      .attr("x", (d: any, i: any) => {
+        return 25 / transform.k + this.nodeRadiusEncoder(transform)(d, i);
+      })
+      .attr("y", (d: any, i: any) => {
+        return 3.5 / transform.k;
+      })
       .attr("text-anchor", "middle")
       .style("font-size", `${12 / transform.k}px`)
       .text(nodeData["name"]);
