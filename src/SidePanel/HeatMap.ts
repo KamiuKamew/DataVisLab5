@@ -27,10 +27,14 @@ export class HeatMap {
     // Append the main group element
     this.svg
       .append("g")
-      .attr("transform", `translate(${this.margin.left}, ${this.margin.top + 80})`);
+      .attr("transform", `translate(${this.margin.left}, ${this.margin.top + 70})`);
 
     // Add a group for displaying cell info
-    this.infoGroup = this.svg.append("g").attr("class", "cell-info").style("visibility", "hidden");
+    this.infoGroup = this.svg
+      .append("g")
+      .attr("class", "cell-info")
+      .raise()
+      .style("visibility", "hidden");
   }
 
   public render(paramId: number): void {
@@ -142,7 +146,7 @@ export class HeatMap {
     const legendSvg = this.svg
       .append("g")
       .attr("class", "legend")
-      .attr("transform", `translate(${this.margin.left}, 50)`);
+      .attr("transform", `translate(${this.margin.left}, 40)`);
 
     legendSvg
       .append("text")
@@ -208,6 +212,7 @@ export class HeatMap {
     y: number
   ): void {
     this.infoGroup
+      .raise()
       .style("visibility", "visible")
       .attr("transform", `translate(${x + 50}, ${y + 40})`);
 
