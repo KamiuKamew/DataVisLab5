@@ -236,8 +236,6 @@ export class MapContext {
       .attr("rx", 5 / transform.k)
       .attr("ry", 5 / transform.k)
       .style("fill", "white")
-      .style("stroke", "black")
-      .style("stroke-width", 1 / transform.k)
       .style("opacity", 0.7)
       .on("mouseover", (event: MouseEvent, d: any) => {
         d3.select((event.currentTarget as any).parentNode).raise();

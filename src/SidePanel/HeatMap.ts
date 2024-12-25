@@ -7,6 +7,7 @@ export class HeatMap {
   private margin = { top: 20, right: 30, bottom: 30, left: 40 };
   private width: number;
   private height: number;
+  private infoGroup: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
 
   constructor(
     private ctx: Context,
@@ -16,7 +17,6 @@ export class HeatMap {
     this.svg = svg;
     this.shortestPath = shortestPath;
 
-    // 动态获取 SVG 容器的宽高
     const bbox = this.svg.node()?.getBoundingClientRect();
     this.width = (bbox?.width || 800) - this.margin.left - this.margin.right - 100;
     this.height = (bbox?.height || 500) - this.margin.top - this.margin.bottom + 200;
@@ -28,25 +28,23 @@ export class HeatMap {
     this.svg
       .append("g")
       .attr("transform", `translate(${this.margin.left}, ${this.margin.top + 80})`);
+
+    // Add a group for displaying cell info
+    this.infoGroup = this.svg.append("g").attr("class", "cell-info").style("visibility", "hidden");
   }
 
   public render(paramId: number): void {
     const data: ShortestPathTable = this.shortestPath.shortestPathTable;
-
-    // Get all unique source and target names
     const sources = Object.keys(data);
     const targets = new Set<string>();
     sources.forEach((source) => {
       Object.keys(data[source]).forEach((target) => targets.add(target));
     });
-
     const targetArray = Array.from(targets);
 
-    // Set up scales
     const xScale = d3.scaleBand().domain(sources).range([0, this.width]).padding(0.1);
     const yScale = d3.scaleBand().domain(targetArray).range([0, this.height]).padding(0.1);
 
-    // Flatten the data into an array for easier mapping
     const flattenedData = [];
     for (const source of sources) {
       for (const target of targetArray) {
@@ -63,12 +61,12 @@ export class HeatMap {
       }
     }
 
-    // Determine color scale
     const maxParam = d3.max(flattenedData, (d) => (d.param !== Infinity ? d.param : 0)) || 1;
     const colorScale = d3.scaleSequential(d3.interpolateReds).domain([0, maxParam]);
 
-    // Draw the heatmap
     const g = this.svg.select("g");
+
+    const self = this;
 
     g.selectAll("rect")
       .data(flattenedData)
@@ -81,9 +79,7 @@ export class HeatMap {
       .attr("fill", (d) => (d.param === Infinity ? "black" : colorScale(d.param)))
       .attr("class", (d) => `cell-${d.source}-${d.target}`.replace(/\s+/g, "-"))
       .on("mouseenter", function (event, d) {
-        // 阻止默认事件
         event.preventDefault();
-        // 阻止事件冒泡
         event.stopPropagation();
 
         const cell = d3.select(this);
@@ -95,7 +91,7 @@ export class HeatMap {
         cell
           .transition()
           .duration(200)
-          .attr("transform", `scale(9)`)
+          .attr("transform", `scale(2)`)
           .attr(
             "transform-origin",
             `${xScale(d.source)! + xScale.bandwidth() / 2}px ${
@@ -103,38 +99,19 @@ export class HeatMap {
             }px`
           );
 
-        // 添加文本
-        g.append("text")
-          .attr("x", xScale(d.source)! + xScale.bandwidth() / 2)
-          .attr("y", yScale(d.target)! + yScale.bandwidth() / 2)
-          .attr("class", "cell-text")
-          .attr("text-anchor", "middle")
-          .attr("dominant-baseline", "central")
-          .style("font-size", "16px")
-          .style("fill", d.param < 2500 * 0.4 ? "black" : "white") // 根据条件动态设置颜色
-          .style("pointer-events", "none")
-          .selectAll("tspan") // 选择所有的 tspan 元素
-          .data([`${d.source}-${d.target}`, `${d.param.toFixed(1)} km`]) // 数据数组，每行一个字符串
-          .enter()
-          .append("tspan")
-          .attr("x", xScale(d.source)! + xScale.bandwidth() / 2) // 保持 x 坐标不变
-          .attr("y", yScale(d.target)! + yScale.bandwidth() / 2 - 5) // 第一行保持在中心，后续行逐行向下
-          .attr("dy", (d, i) => (i === 0 ? "0em" : "1.2em")) // 第一行保持在中心，后续行逐行向下
-          // 不允许选择文本
-          .style("user-select", "none")
-          .text((d) => d); // 设置 tspan 的文本
+        // Display cell info
+        self.displayCellInfo(d, xScale(d.source)!, yScale(d.target)!);
       })
-      .on("mouseleave", function (event, d) {
-        const cell = d3.select(this);
+      .on("mouseleave", (event, d) => {
+        const cell = d3.select(event.target);
 
-        // 恢复大小
-        cell.transition().duration(200).attr("transform", "scale(1)").attr("stroke-width", "0");
+        // Restore size
+        cell.transition().duration(200).attr("transform", "scale(1)");
 
-        // 移除文本
-        g.selectAll(".cell-text").remove();
+        // Hide cell info
+        this.hideCellInfo();
       })
       .on("click", (event, d) => {
-        // Trigger setPath with appropriate parameters
         this.ctx.choosed.setPath({
           id: Graph.getEdgeId(d.source, d.target),
           name: Graph.getEdgeId(d.source, d.target),
@@ -142,7 +119,6 @@ export class HeatMap {
         });
       });
 
-    // Add axes
     const xAxis = d3.axisBottom(xScale);
     const yAxis = d3.axisLeft(yScale);
 
@@ -157,39 +133,35 @@ export class HeatMap {
 
     g.append("g").call(yAxis);
 
-    // Add a color legend
+    this.renderLegend(colorScale);
+  }
+
+  private renderLegend(colorScale: d3.ScaleSequential<string, number>): void {
     const legendWidth = 200;
     const legendHeight = 20;
-
-    // 添加图例容器
     const legendSvg = this.svg
       .append("g")
       .attr("class", "legend")
       .attr("transform", `translate(${this.margin.left}, 50)`);
 
-    // 添加图例文字说明
     legendSvg
       .append("text")
       .attr("x", 0)
-      .attr("y", -10) // 文字位置在图例的上方
+      .attr("y", -10)
       .style("font-size", "12px")
       .style("font-weight", "bold")
-      .style("text-anchor", "start") // 左对齐
+      .style("text-anchor", "start")
       .text("颜色映射：里程数（单位：千米）");
 
-    // 使用与 colorScale 一致的范围
     const legendScale = d3.scaleLinear().domain(colorScale.domain()).range([0, legendWidth]);
-
     const legendAxis = d3.axisBottom(legendScale).ticks(5);
 
-    // 创建多个渐变点
-    const numStops = 10; // 可以调整以增加或减少渐变的平滑度
+    const numStops = 10;
     const gradientStops = d3.range(0, 1 + 1e-6, 1 / (numStops - 1)).map((t) => ({
       offset: `${t * 100}%`,
-      color: d3.interpolateReds(t), // 从 d3.interpolateReds 获取颜色
+      color: d3.interpolateReds(t),
     }));
 
-    // 更新渐变定义
     const legendGradient = legendSvg
       .append("defs")
       .append("linearGradient")
@@ -199,12 +171,10 @@ export class HeatMap {
       .attr("x2", "100%")
       .attr("y2", "0%");
 
-    // 添加渐变的 stop 节点
     gradientStops.forEach((stop) => {
       legendGradient.append("stop").attr("offset", stop.offset).attr("stop-color", stop.color);
     });
 
-    // 绘制图例条
     legendSvg
       .append("rect")
       .attr("x", 0)
@@ -213,8 +183,61 @@ export class HeatMap {
       .attr("height", legendHeight)
       .style("fill", "url(#legendGradient)");
 
-    // 绘制图例轴
     legendSvg.append("g").attr("transform", `translate(0, ${legendHeight})`).call(legendAxis);
+
+    legendSvg
+      .append("rect")
+      .attr("x", legendWidth + 20)
+      .attr("y", 0)
+      .attr("width", legendHeight)
+      .attr("height", legendHeight)
+      .style("fill", "black");
+
+    legendSvg
+      .append("text")
+      .attr("x", legendWidth + 25)
+      .attr("y", legendHeight + 13)
+      .style("alignment-baseline", "middle")
+      .style("font-size", "10px")
+      .text("∞");
+  }
+
+  private displayCellInfo(
+    d: { source: string; target: string; param: number },
+    x: number,
+    y: number
+  ): void {
+    this.infoGroup
+      .style("visibility", "visible")
+      .attr("transform", `translate(${x + 50}, ${y + 40})`);
+
+    this.infoGroup.selectAll("*").remove();
+
+    this.infoGroup
+      .append("rect")
+      .attr("width", 150)
+      .attr("height", 50)
+      .attr("fill", "white")
+      .attr("stroke", "black")
+      .attr("rx", 5);
+
+    this.infoGroup
+      .append("text")
+      .attr("x", 10)
+      .attr("y", 20)
+      .style("font-size", "12px")
+      .text(`线路: ${d.source}-${d.target}`);
+
+    this.infoGroup
+      .append("text")
+      .attr("x", 10)
+      .attr("y", 40)
+      .style("font-size", "12px")
+      .text(`里程: ${d.param === Infinity ? "∞" : `${d.param.toFixed(1)} km`}`);
+  }
+
+  private hideCellInfo(): void {
+    this.infoGroup.style("visibility", "hidden");
   }
 
   public clear(): void {

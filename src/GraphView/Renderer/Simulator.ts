@@ -137,13 +137,11 @@ export class ForceSimulator {
       .attr("y", (d) => {
         return -10 / k;
       })
-      .attr("width", 50 / k) // 设置宽度
-      .attr("height", 20 / k) // 设置高度
-      .attr("rx", 5 / k) // 设置圆角
-      .attr("ry", 5 / k) // 设置圆角
+      .attr("width", 50 / k)
+      .attr("height", 20 / k)
+      .attr("rx", 5 / k)
+      .attr("ry", 5 / k)
       .style("fill", "white")
-      .style("stroke", "black")
-      .style("stroke-width", 1 / k)
       .style("opacity", 0.7)
       .on("mouseover", (event: MouseEvent, d: any) => {
         d3.select((event.currentTarget as any).parentNode).raise();
