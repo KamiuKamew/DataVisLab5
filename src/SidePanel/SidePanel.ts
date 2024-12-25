@@ -249,7 +249,8 @@ export class RightSidePanel {
 }
 
 export class TopSidePanel {
-  private buttons_ids = ["btn-map-view", "btn-distance-view", "btn-time-view"];
+  // private buttons_ids = ["btn-map-view", "btn-distance-view", "btn-time-view"];
+  private buttons_ids = ["btn-map-view", "btn-distance-view"];
 
   private buttons: Map<string, HTMLElement>;
 
@@ -277,11 +278,11 @@ export class TopSidePanel {
           console.log("切换到地图视图");
           this.ctx.onVievChange("distance");
         });
-      } else if (button_id === "btn-time-view") {
-        button.addEventListener("click", () => {
-          console.log("切换到时间视图");
-          this.ctx.onVievChange("time");
-        });
+        // } else if (button_id === "btn-time-view") {
+        //   button.addEventListener("click", () => {
+        //     console.log("切换到时间视图");
+        //     this.ctx.onVievChange("time");
+        //   });
       }
     });
   }
