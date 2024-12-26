@@ -62,8 +62,6 @@ export class Context {
 
         this.densityCurve = new DensityCurve(d3.select("#densityChart"), this.shortestPath); // 创建 DensityCurve 实例并绘制
         this.heatMap = new HeatMap(this, d3.select("#heatMap"), this.shortestPath); // 创建 HeatMap 实例并绘制
-        // this.densityCurve.render(0); // 渲染第 0 个参数的密度曲线图
-        // this.heatMap.render(0); // 渲染第 0 个参数的热力图
       })
     ).then(() => {
       this.fix();

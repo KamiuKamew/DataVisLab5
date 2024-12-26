@@ -74,7 +74,7 @@ export class GraphContext {
     graphEventManager.on("NodeAdded", (id: string) => {
       this.ctx.data.nodes()[id] = {
         id: id,
-        name: `new node ${id}`,
+        name: `${id}`,
         geo_info: [0, 0],
         access_info: 0,
         degree: 0,

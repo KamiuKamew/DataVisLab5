@@ -249,7 +249,7 @@ export class MapContext {
       .attr("id", (d: any) => `node-${d[0]}`) // 设置节点的 id 属性
       .attr("r", this.nodeRadiusEncoder(transform)) // 设置圆的半径
       .attr("fill", this.nodeColorEncoder()) // 设置圆的填充颜色
-      .attr("stroke", "black") // 设置圆的边框颜色
+      .attr("stroke", "white") // 设置圆的边框颜色
       .attr("stroke-width", this.nodeStrokeWidthEncoder(transform, 2))
       .on("mouseover", (event: MouseEvent, d: any) => {
         console.log("[MapContext] mouseover node: ", d);
@@ -285,12 +285,12 @@ export class MapContext {
   }
 
   onNodeFirstChange(oldNodeId: string | null, newNodeId: string | null): void {
-    if (oldNodeId) d3.select(`#node-${oldNodeId}`).attr("stroke", "black");
+    if (oldNodeId) d3.select(`#node-${oldNodeId}`).attr("stroke", "white");
     if (newNodeId) d3.select(`#node-${newNodeId}`).attr("stroke", "red");
   }
 
   onNodeSecondChange(oldNodeId: string | null, newNodeId: string | null): void {
-    if (oldNodeId) d3.select(`#node-${oldNodeId}`).attr("stroke", "black");
+    if (oldNodeId) d3.select(`#node-${oldNodeId}`).attr("stroke", "white");
     if (newNodeId) d3.select(`#node-${newNodeId}`).attr("stroke", "yellow");
   }
 
@@ -481,7 +481,7 @@ export class MapContext {
       .attr("rx", 5 / transform.k)
       .attr("ry", 5 / transform.k)
       .style("fill", "white")
-      .style("stroke", "black")
+      .style("stroke", "white")
       .style("stroke-width", 1 / transform.k)
       .style("opacity", 0.7);
 
@@ -490,7 +490,7 @@ export class MapContext {
       .select("circle")
       .attr("r", this.nodeRadiusEncoder(transform))
       .attr("fill", this.nodeColorEncoder()) // 根据需要调用颜色编码器
-      .attr("stroke", "black")
+      .attr("stroke", "white")
       .attr("stroke-width", this.nodeStrokeWidthEncoder(transform, 2));
 
     // 更新文本标签的样式和内容

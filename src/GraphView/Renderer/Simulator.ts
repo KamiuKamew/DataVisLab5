@@ -153,17 +153,17 @@ export class ForceSimulator {
       .attr("id", (d) => `node-${d._id}`)
       .attr("r", (d: any) => radiusScale(this.ctx.data().nodes()[d._id].degree)) // 根据数据值设置半径
       .attr("fill", (d: any) => colorScale(this.ctx.data().nodes()[d._id].access_info)) // 根据数据值设置颜色
-      .attr("stroke", "black")
+      .attr("stroke", "white")
       .attr("stroke-width", 1)
       .each((d: any) => {
         d.hoved = false;
       })
       .on("mouseover", (event, d: any) => {
-        d3.select(event.target).attr("stroke", "white").attr("stroke-width", 2);
+        d3.select(event.target).attr("stroke", "lightblue").attr("stroke-width", 2);
         d.hoved = true;
       })
       .on("mouseout", (event, d: any) => {
-        d3.select(event.target).attr("stroke", "black").attr("stroke-width", 1);
+        d3.select(event.target).attr("stroke", "white").attr("stroke-width", 1);
         d.hoved = false;
       })
       .on("click", (event: MouseEvent, d: any) => {
@@ -203,12 +203,12 @@ export class ForceSimulator {
   }
 
   onNodeFirstChange(oldNodeId: string | null, newNodeId: string | null): void {
-    if (oldNodeId) d3.select(`#node-${oldNodeId}`).attr("stroke", "black");
+    if (oldNodeId) d3.select(`#node-${oldNodeId}`).attr("stroke", "lightblue");
     if (newNodeId) d3.select(`#node-${newNodeId}`).attr("stroke", "red");
   }
 
   onNodeSecondChange(oldNodeId: string | null, newNodeId: string | null): void {
-    if (oldNodeId) d3.select(`#node-${oldNodeId}`).attr("stroke", "black");
+    if (oldNodeId) d3.select(`#node-${oldNodeId}`).attr("stroke", "lightblue");
     if (newNodeId) d3.select(`#node-${newNodeId}`).attr("stroke", "yellow");
   }
 
@@ -398,14 +398,14 @@ export class ForceSimulator {
     const nodes = this.graph.getNodes();
     nodes.forEach((node) => {
       d3.select(`#node-${node._id}`)
-        .attr("stroke", "black")
+        .attr("stroke", "white")
         .on("mouseover", (event, d: any) => {
-          d3.select(event.target).attr("stroke", "white");
+          d3.select(event.target).attr("stroke", "lightblue");
           d.hoved = true;
           // console.log("Mouseover on node:", d);
         }) // 设置鼠标移入节点时变色
         .on("mouseout", (event, d: any) => {
-          d3.select(event.target).attr("stroke", "black");
+          d3.select(event.target).attr("stroke", "white");
           d.hoved = false;
         });
     });
