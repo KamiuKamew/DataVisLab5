@@ -49,3 +49,25 @@
     - 改热力图标签，加上infinity的说明。
     - 改热力图显示方法，在上方添加一栏展示名称和值。
     - 改热力图文本说明。
+
+- 太怪了。现在已知以下几个：
+    - 在切换到距离拓扑视图之前，对密度图的重绘非常耗时；但是在切换后，当调用过ctx.onParamChange("上海")后，再密度图的重绘就好了；但是，切换视图前调用ctx.onParamChange("上海")既不会重绘也不会加速。
+
+ctx.mapContext.clear();
+ctx.graphContext.clear();
+ctx.mapContext.init();
+ctx.mapContext.render();
+
+ctx.shortestPath.clear();
+ctx.shortestPath.init();
+ctx.shortestPath.calcAll();
+
+ctx.densityCurve.render(0);
+
+ctx.heatMap.clear();
+ctx.heatMap.render(0);
+
+ctx.mapContext.clear();
+ctx.graphContext.clear();
+ctx.graphContext.init("distance");
+ctx.graphContext.render();

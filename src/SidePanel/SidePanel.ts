@@ -280,12 +280,12 @@ export class TopSidePanel {
       if (button_id === "btn-map-view") {
         button.addEventListener("click", () => {
           console.log("切换到地图视图");
-          this.ctx.onVievChange("map");
+          this.ctx.onViewChange("map");
         });
       } else if (button_id === "btn-distance-view") {
         button.addEventListener("click", () => {
           console.log("切换到地图视图");
-          this.ctx.onVievChange("distance");
+          this.ctx.onViewChange("distance");
         });
         // } else if (button_id === "btn-time-view") {
         //   button.addEventListener("click", () => {

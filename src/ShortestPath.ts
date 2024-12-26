@@ -19,13 +19,14 @@ export type ShortestPathTable = {
 // 类型定义：图的结构
 export class ShortestPath {
   private adjacencyTable: AdjacencyTable;
-  shortestPathTable: ShortestPathTable;
+  private _shortestPathTable: ShortestPathTable;
 
   private inited = false;
+  private calced = false;
 
   constructor(private data: Data) {
     this.adjacencyTable = {};
-    this.shortestPathTable = {};
+    this._shortestPathTable = {};
 
     console.log(`[${this.constructor.name}] Constructed.`);
   }
@@ -47,10 +48,10 @@ export class ShortestPath {
     this.getAdjacencyTable();
     const nodes = Object.keys(this.adjacencyTable);
     nodes.forEach((source) => {
-      this.shortestPathTable[source] = {};
+      this._shortestPathTable[source] = {};
       nodes.forEach((target) => {
         const name = Graph.getEdgeId(source, target);
-        this.shortestPathTable[source][target] = {
+        this._shortestPathTable[source][target] = {
           id: name,
           name: name,
           params: [
@@ -67,8 +68,9 @@ export class ShortestPath {
   }
 
   clear() {
-    this.shortestPathTable = {};
+    this._shortestPathTable = {};
     this.inited = false;
+    this.calced = false;
   }
 
   // 计算图中所有节点两两之间的最短路径
@@ -83,11 +85,13 @@ export class ShortestPath {
     let total = 0;
     nodes.forEach((source) => {
       nodes.forEach((target) => {
-        const path = this.shortestPathTable[source][target];
+        const path = this._shortestPathTable[source][target];
         total += path.params[0].param !== Infinity ? 1 : 0;
       });
     });
     // console.log(`Total paths: ${total}`);
+
+    this.calced = true;
 
     console.log(`[${this.constructor.name}] calced.`);
   }
@@ -133,12 +137,12 @@ export class ShortestPath {
 
       nodes.forEach((target) => {
         if (dist[target] !== Infinity) {
-          this.shortestPathTable[source_name][target].params[paramId] = {
+          this._shortestPathTable[source_name][target].params[paramId] = {
             passByNodesId: passByNodesId[target],
             passByEdgesId: passByEdgeId[target],
             param: dist[target],
           };
-          this.shortestPathTable[target][source_name].params[paramId] = {
+          this._shortestPathTable[target][source_name].params[paramId] = {
             passByNodesId: passByNodesId[target],
             passByEdgesId: passByEdgeId[target],
             param: dist[target],
@@ -154,12 +158,19 @@ export class ShortestPath {
     dst: string,
     paramId: number
   ): { passByNodesId: string[]; passByEdgesId: string[]; param: number } {
-    const path = this.shortestPathTable[src][dst];
+    const path = this._shortestPathTable[src][dst];
 
     if (!path) {
       return { passByNodesId: [], passByEdgesId: [], param: Infinity };
     }
 
     return path.params[paramId];
+  }
+
+  public shortestPathTable(): ShortestPathTable {
+    if (!this.calced) {
+      throw new Error("ShortestPath not calced");
+    }
+    return this._shortestPathTable;
   }
 }

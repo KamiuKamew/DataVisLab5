@@ -40,7 +40,7 @@ export class HeatMap {
   }
 
   public render(paramId: number): void {
-    const data: ShortestPathTable = this.shortestPath.shortestPathTable;
+    const data: ShortestPathTable = this.shortestPath.shortestPathTable();
     const sources = Object.keys(data);
     const targets = new Set<string>();
     sources.forEach((source) => {

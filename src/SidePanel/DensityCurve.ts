@@ -52,53 +52,11 @@ export class DensityCurve {
       return;
     }
 
-    const startTime = performance.now(); // 记录开始时间
-
     const { x, y, density, line } = this.prepareScalesAndDensity(data);
-    const prepareScalesAndDensityTime = performance.now(); // 记录 prepareScalesAndDensity 函数结束时间
-    console.log(
-      `[${this.constructor.name}] prepareScalesAndDensity took ${
-        prepareScalesAndDensityTime - startTime
-      } milliseconds.`
-    );
-
     this.setupAxes(x, y);
-    const setupAxesTime = performance.now(); // 记录 setupAxes 函数结束时间
-    console.log(
-      `[${this.constructor.name}] setupAxes took ${
-        setupAxesTime - prepareScalesAndDensityTime
-      } milliseconds.`
-    );
-
     this.updateLinePath(density, line);
-    const updateLinePathTime = performance.now(); // 记录 updateLinePath 函数结束时间
-    console.log(
-      `[${this.constructor.name}] updateLinePath took ${
-        updateLinePathTime - setupAxesTime
-      } milliseconds.`
-    );
-
     this.updateBalls(data, infinityCount, x, y);
-    const updateBallsTime = performance.now(); // 记录 updateBalls 函数结束时间
-    console.log(
-      `[${this.constructor.name}] updateBalls took ${
-        updateBallsTime - updateLinePathTime
-      } milliseconds.`
-    );
-
     this.updateLabels();
-    const updateLabelsTime = performance.now(); // 记录 updateLabels 函数结束时间
-    console.log(
-      `[${this.constructor.name}] updateLabels took ${
-        updateLabelsTime - updateBallsTime
-      } milliseconds.`
-    );
-
-    console.log(
-      `[${this.constructor.name}] render took ${
-        updateLabelsTime - startTime
-      } milliseconds in total.`
-    );
 
     console.log(`[${this.constructor.name}] rendered.`);
   }
@@ -158,6 +116,7 @@ export class DensityCurve {
     const linePath = this.gPath.select("path");
 
     if (linePath.empty()) {
+      console.log(`[${this.constructor.name}] line:`, line);
       this.gPath
         .append("path")
         .datum(density)
@@ -356,11 +315,11 @@ export class DensityCurve {
   private extractParamData(paramId: number): { id: string; value: number }[] {
     const result: { id: string; value: number }[] = [];
 
-    for (const source in this.shortestPath.shortestPathTable) {
-      for (const target in this.shortestPath.shortestPathTable[source]) {
+    for (const source in this.shortestPath.shortestPathTable()) {
+      for (const target in this.shortestPath.shortestPathTable()[source]) {
         if (source === target) continue;
-        const id = this.shortestPath.shortestPathTable[source][target].id;
-        const params = this.shortestPath.shortestPathTable[source][target].params;
+        const id = this.shortestPath.shortestPathTable()[source][target].id;
+        const params = this.shortestPath.shortestPathTable()[source][target].params;
 
         if (paramId >= 0 && paramId < params.length) {
           const value = params[paramId]?.param;
@@ -377,10 +336,10 @@ export class DensityCurve {
   private extractInfinityCount(paramId: number): number {
     let count = 0;
 
-    for (const source in this.shortestPath.shortestPathTable) {
-      for (const target in this.shortestPath.shortestPathTable[source]) {
+    for (const source in this.shortestPath.shortestPathTable()) {
+      for (const target in this.shortestPath.shortestPathTable()[source]) {
         if (source === target) continue;
-        const params = this.shortestPath.shortestPathTable[source][target].params;
+        const params = this.shortestPath.shortestPathTable()[source][target].params;
 
         if (paramId >= 0 && paramId < params.length) {
           const param = params[paramId]?.param;

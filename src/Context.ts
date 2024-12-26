@@ -52,33 +52,57 @@ export class Context {
       this.topSidePanel.init();
     };
 
-    this.data.load().then(() => {
-      this.mapContext.render();
+    Promise.resolve(
+      this.data.load().then(() => {
+        this.mapContext.render();
 
-      this.shortestPath = new ShortestPath(this.data);
-      this.shortestPath.init();
-      this.shortestPath.calcAll();
+        this.shortestPath = new ShortestPath(this.data);
+        this.shortestPath.init();
+        this.shortestPath.calcAll();
 
-      this.densityCurve = new DensityCurve(d3.select("#densityChart"), this.shortestPath); // 创建 DensityCurve 实例并绘制
-      this.densityCurve.render(0); // 渲染第 0 个参数的密度曲线图
-      this.heatMap = new HeatMap(this, d3.select("#heatMap"), this.shortestPath); // 创建 HeatMap 实例并绘制
-      this.heatMap.render(0); // 渲染第 0 个参数的热力图
+        this.densityCurve = new DensityCurve(d3.select("#densityChart"), this.shortestPath); // 创建 DensityCurve 实例并绘制
+        this.heatMap = new HeatMap(this, d3.select("#heatMap"), this.shortestPath); // 创建 HeatMap 实例并绘制
+        // this.densityCurve.render(0); // 渲染第 0 个参数的密度曲线图
+        // this.heatMap.render(0); // 渲染第 0 个参数的热力图
+      })
+    ).then(() => {
+      this.fix();
     });
 
     this.legendContext.render();
   }
 
-  onVievChange(view: "map" | "distance" | "time"): void {
+  async fix() {
+    // FIXME: 哦我的天哪。建议你不要尝试动这块代码，不要删掉任何一个await，虽然这看起来完全不需要同步。
+    await this.graphContext.clear();
+    await this.graphContext.init("distance");
+    await this.graphContext.render();
+
+    await this.shortestPath.clear();
+    await this.shortestPath.init();
+    await this.shortestPath.calcAll();
+
+    await this.densityCurve.render(0);
+    await this.heatMap.clear();
+    await this.heatMap.render(0);
+
+    await this.mapContext.clear();
+    await this.graphContext.clear();
+    await this.mapContext.init();
+    await this.mapContext.render();
+  }
+
+  onViewChange(view: "map" | "distance" | "time"): void {
     this.currentView = view;
     if (view === "map") {
       this.renderMap();
     } else if (view === "distance") {
       this.currentModel = view;
-      this.rerenderDensityCurve();
+      // this.rerenderDensityCurve();
       this.renderGraph("distance");
     } else if (view === "time") {
       this.currentModel = view;
-      this.rerenderDensityCurve();
+      // this.rerenderDensityCurve();
       this.renderGraph("time");
     }
   }
@@ -176,4 +200,4 @@ export class Context {
   }
 }
 
-const ctx = new Context();
+(window as any).ctx = new Context();
